@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { movesQueue, stepCompleted } from "./components/Player";
 import { player, position } from "./components/Player";
 import { tileSize } from "./constants";
+import { sendPosition } from "./websocket";
 
 const moveClock = new THREE.Clock(false);
 
@@ -37,6 +38,7 @@ function setPosition(progress) {
   player.position.x = THREE.MathUtils.lerp(startX, endX, progress);
   player.position.y = THREE.MathUtils.lerp(startY, endY, progress);
   player.children[0].position.z = Math.sin(progress * Math.PI) * 8;
+  sendPosition(player.position.x, player.position.y);
 }
 
 function setRotation(progress) {

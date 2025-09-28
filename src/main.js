@@ -10,6 +10,7 @@ import { collectUserInput } from "./collectUserInput";
 import { animatePlayer } from "./animatePlayer";
 import { hitTest } from "./utilies/hitTest";
 import { initializePathfinding } from "./utilies/findPath";
+import "./websocket.js";
 
 const scene = new THREE.Scene();
 scene.add(player);
