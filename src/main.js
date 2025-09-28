@@ -6,9 +6,10 @@ import { player, initializePlayer } from "./components/Player";
 import { map, initialiseMap, initialiseMapData } from "./components/Map";
 import { animateVehicles } from "./animateVehicles";
 import "./style.css";
-import "./collectUserInput";
+import { collectUserInput } from "./collectUserInput";
 import { animatePlayer } from "./animatePlayer";
 import { hitTest } from "./utilies/hitTest";
+import { initializePathfinding } from "./utilies/findPath";
 
 const scene = new THREE.Scene();
 scene.add(player);
@@ -23,6 +24,8 @@ player.add(dirLight);
 
 const camera = Camera();
 player.add(camera);
+
+collectUserInput(camera);
 
 downloadMap();
 
@@ -45,6 +48,7 @@ function downloadMap() {
 function initialiseGame() {
   initializePlayer();
   initialiseMap();
+  initializePathfinding();
 }
 
 const renderer = Renderer();

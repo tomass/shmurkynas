@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { endsUpInValidPosition } from "../utilies/endsUpInValidPosition";
 import { mapData } from "./Map";
+import { tileSize } from "../constants";
 
 export const player = Player();
 
@@ -38,8 +39,8 @@ function Player() {
 }
 
 export const position = {
-    x: 1,
-    y: 1,
+    x: 0,
+    y: 2,
     isActive: true,
 }
 
@@ -68,12 +69,13 @@ export function stepCompleted() {
 }
 
 export function initializePlayer() {
-  player.position.x = 0;
-  player.position.y = 0;
+  position.x = 0;
+  position.y = 2;
+
+  player.position.x = position.x * tileSize;
+  player.position.y = position.y * tileSize;
   player.children[0].position.z = 0;
 
-  position.x = 0;
-  position.y = 0;
   position.isActive = true;
 
   movesQueue.length = 0;
