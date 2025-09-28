@@ -12,6 +12,7 @@
     "vite": "^7.1.7"
   },
   "dependencies": {
+    "easystarjs": "^0.4.4",
     "three": "^0.180.0"
   }
 }
