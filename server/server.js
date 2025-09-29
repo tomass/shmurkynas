@@ -3,27 +3,62 @@ import { v4 as uuidv4 } from 'uuid';
 
 const wss = new WebSocketServer({ port: 8088 });
 
-const clients = new Map();
+const players = new Map();
 
 wss.on('connection', ws => {
   const id = uuidv4();
-  clients.set(ws, id);
-  console.log(`Client ${id} connected`);
+  const x = Math.floor(Math.random() * 5) + 2;
+  const y = Math.floor(Math.random() * 5) + 2;
+
+  // Get current players before adding the new one
+  const allPlayers = Array.from(players.values()).map(p => ({ id: p.id, x: p.x, y: p.y }));
+
+  // Send initialization data to the new client
+  ws.send(JSON.stringify({ type: 'init', id, x, y, players: allPlayers }));
+
+  // Add the new player to the server state
+  const playerState = { id, ws, x, y };
+  players.set(id, playerState);
+  console.log(`Client ${id} connected at (${x}, ${y})`);
+
+  // Notify all other players about the new player
+  const newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x, y } });
+  for (const [playerId, player] of players.entries()) {
+    if (player.id !== id && player.ws.readyState === player.ws.OPEN) {
+      player.ws.send(newPlayerMessage);
+    }
+  }
 
   ws.on('message', data => {
-    const message = data.toString();
-    console.log(`Received message from ${id}: ${message}`);
-    // Broadcast the message to all other clients
-    for (const [client, clientId] of clients.entries()) {
-      if (client !== ws && client.readyState === client.OPEN) {
-        client.send(message);
+    const message = JSON.parse(data.toString());
+    console.log(`Received message from ${id}:`, message);
+
+    if (message.type === 'move') {
+      const player = players.get(id);
+      if (player) {
+        player.x = message.x;
+        player.y = message.y;
+
+        // Broadcast the move to all other clients
+        const moveMessage = JSON.stringify({ type: 'playerMoved', id, x: message.x, y: message.y });
+        for (const [pId, p] of players.entries()) {
+          if (pId !== id && p.ws.readyState === p.ws.OPEN) {
+            p.ws.send(moveMessage);
+          }
+        }
       }
     }
   });
 
   ws.on('close', () => {
-    console.log(`Client ${clients.get(ws)} disconnected`);
-    clients.delete(ws);
+    console.log(`Client ${id} disconnected`);
+    players.delete(id);
+    const disconnectMessage = JSON.stringify({ type: 'playerDisconnected', id });
+    for (const [playerId, player] of players.entries()) {
+      if (player.ws.readyState === player.ws.OPEN) {
+        player.ws.send(disconnectMessage);
+      }
+    }
   });
 });
 
