@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 8088 });
 
 const clients = new Map();
 
@@ -27,4 +27,4 @@ wss.on('connection', ws => {
   });
 });
 
-console.log('WebSocket server started on port 8080');
+console.log('WebSocket server started on port 8088');
