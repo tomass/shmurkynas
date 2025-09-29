@@ -5,6 +5,12 @@ const wss = new WebSocketServer({ port: 8088 });
 
 const players = new Map();
 
+function logWithTimestamp(message) {
+  const now = new Date();
+  const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
+  console.log(`${timestamp} ${message}`);
+}
+
 wss.on('connection', ws => {
   const id = uuidv4();
   const x = Math.floor(Math.random() * 5) + 2;
@@ -19,7 +25,7 @@ wss.on('connection', ws => {
   // Add the new player to the server state
   const playerState = { id, ws, x, y };
   players.set(id, playerState);
-  console.log(`Client ${id} connected at (${x}, ${y})`);
+  logWithTimestamp(`Client ${id} connected at (${x}, ${y})`);
 
   // Notify all other players about the new player
   const newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x, y } });
@@ -31,7 +37,7 @@ wss.on('connection', ws => {
 
   ws.on('message', data => {
     const message = JSON.parse(data.toString());
-    console.log(`Received message from ${id}:`, message);
+    logWithTimestamp(`Received message from ${id}:`, message);
 
     if (message.type === 'move') {
       const player = players.get(id);
@@ -51,7 +57,7 @@ wss.on('connection', ws => {
   });
 
   ws.on('close', () => {
-    console.log(`Client ${id} disconnected`);
+    logWithTimestamp(`Client ${id} disconnected`);
     players.delete(id);
     const disconnectMessage = JSON.stringify({ type: 'playerDisconnected', id });
     for (const [playerId, player] of players.entries()) {
@@ -62,4 +68,4 @@ wss.on('connection', ws => {
   });
 });
 
-console.log('WebSocket server started on port 8088');
+logWithTimestamp('WebSocket server started on port 8088');
