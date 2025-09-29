@@ -1,17 +1,14 @@
 import * as THREE from "three";
 import { endsUpInValidPosition } from "../utilies/endsUpInValidPosition";
-import { mapData } from "./Map";
 import { tileSize } from "../constants";
 
-export const player = Player();
-
-function Player() {
+export function createPlayerMesh(color = "white") {
     const player = new THREE.Group();
 
     const body = new THREE.Mesh(
         new THREE.BoxGeometry(15, 15, 20),
         new THREE.MeshLambertMaterial({
-            color: "white",
+            color: color,
             flatShading: true,
         })
     );
@@ -37,6 +34,8 @@ function Player() {
 
     return playerContainer;
 }
+
+export const player = createPlayerMesh();
 
 export const position = {
     x: 0,
@@ -68,9 +67,9 @@ export function stepCompleted() {
     if (direction === "right")    position.x += 1;
 }
 
-export function initializePlayer() {
-  position.x = 0;
-  position.y = 2;
+export function initializePlayer(x, y) {
+  position.x = x;
+  position.y = y;
 
   player.position.x = position.x * tileSize;
   player.position.y = position.y * tileSize;
