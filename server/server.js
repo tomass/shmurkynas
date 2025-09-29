@@ -5,10 +5,10 @@ const wss = new WebSocketServer({ port: 8088 });
 
 const players = new Map();
 
-function logWithTimestamp(message) {
+function logWithTimestamp(...args) {
   const now = new Date();
   const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
-  console.log(`${timestamp} ${message}`);
+  console.log(`${timestamp}`, ...args);
 }
 
 wss.on('connection', ws => {
