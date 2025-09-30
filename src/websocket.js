@@ -9,7 +9,11 @@ function connect() {
   playerId = localStorage.getItem('playerId') || null;
   const lastPosition = JSON.parse(localStorage.getItem('lastPosition'));
 
-  socket = new WebSocket('wss://dev.openmap.lt/smurkynas');
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  const wsUrl = `${protocol}//${host}/smurkynas`;
+
+  socket = new WebSocket(wsUrl);
 
   socket.addEventListener('open', () => {
     console.log('Connected to WebSocket server');
