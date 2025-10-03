@@ -4,11 +4,11 @@ import { Road } from "./Road";
 import { Tree } from "./Tree";
 import { Building } from "./Building";
 import { Water } from "./Water";
-import { Car } from "./Car";
-import { Truck } from "./Truck";
+import { ActivePoint } from "./ActivePoint";
 
 let maps = {};
 export let mapData = [];
+let currentPoints = [];
 export const map = new THREE.Group();
 
 // This function replaces `initialiseMapData`. It stores all maps and sets the initial map data.
@@ -16,7 +16,8 @@ export function initialiseMapData(downloadedMaps) {
   maps = downloadedMaps;
   if (maps['base']) {
     // Set initial mapData for other modules that might need it before rendering
-    mapData = [...maps['base']].reverse();
+    mapData = [...maps['base'].tiles].reverse();
+    currentPoints = maps['base'].points;
   }
 }
 
@@ -27,7 +28,8 @@ export function initialiseMap(mapName = 'base') {
     return;
   }
   // Update mapData to the one being rendered.
-  mapData = [...maps[mapName]].reverse();
+  mapData = [...maps[mapName].tiles].reverse();
+  currentPoints = maps[mapName].points;
 
   map.remove(...map.children);
 
@@ -56,5 +58,16 @@ function addTile(x, y, type) {
   } else /*(type === "Ž")*/ {
     const grass = Grass(x, y);
     map.add(grass);
+  }
+
+  const point = currentPoints.find(p => p.x === x && p.y === (mapData.length - 1 - y));
+  if (point) {
+    if (point.type === 'transfer') {
+      const transferPoint = ActivePoint(x, y, 0xffff00);
+      map.add(transferPoint);
+    } else if (point.type === 'living') {
+      const transferPoint = ActivePoint(x, y, 0x00ff00);
+      map.add(transferPoint);
+    }
   }
 }
