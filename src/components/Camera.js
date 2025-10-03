@@ -20,5 +20,16 @@ export function Camera() {
   camera.position.set(300, -300, 300);
   camera.lookAt(0, 0, 0);
 
+  camera.minZoom = 0.5;
+  camera.maxZoom = 2.0;
+
+  camera.setZoom = function(zoom) {
+    const newZoom = Math.max(this.minZoom, Math.min(zoom, this.maxZoom));
+    this.zoom = newZoom;
+    this.updateProjectionMatrix();
+  }
+
+  camera.setZoom(1.0);
+
   return camera;
 }

@@ -3,7 +3,7 @@ import { queueMove, position } from "./components/Player";
 import { findPath } from "./utilies/findPath";
 import { tileSize } from "./constants";
 
-export function collectUserInput(camera) {
+export function collectUserInput(camera, handleZoom) {
     document
         .getElementById("forward")
         ?.addEventListener("click", () => queueMove("forward"));
@@ -41,7 +41,42 @@ export function collectUserInput(camera) {
 
     window.addEventListener( 'pointerdown', onPointerDown, false );
 
+    window.addEventListener('wheel', event => {
+        const zoomFactor = event.deltaY > 0 ? 1.05 : 1 / 1.05;
+        handleZoom(camera.zoom * zoomFactor);
+    });
+
+    let initialTouchDistance = 0;
+    let isPinching = false;
+
+    window.addEventListener('touchstart', event => {
+        if (event.touches.length === 2) {
+            isPinching = true;
+            initialTouchDistance = getTouchDistance(event.touches);
+        }
+    });
+
+    window.addEventListener('touchmove', event => {
+        if (isPinching && event.touches.length === 2) {
+            const currentTouchDistance = getTouchDistance(event.touches);
+            const zoomFactor = currentTouchDistance / initialTouchDistance;
+            handleZoom(camera.zoom * zoomFactor);
+            initialTouchDistance = currentTouchDistance;
+        }
+    });
+
+    window.addEventListener('touchend', () => {
+        isPinching = false;
+    });
+
+    function getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
     function onPointerDown( event ) {
+        if (isPinching) return;
         // calculate pointer position in normalized device coordinates
         // (-1 to +1) for both components
         pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
