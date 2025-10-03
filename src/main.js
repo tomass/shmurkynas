@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
 import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
-import { player, initializePlayer } from "./components/Player";
-import { map, initialiseMap, initialiseMapData } from "./components/Map";
+import { player, initializePlayer, setPlayerPosition } from "./components/Player";
+import { map, initialiseMap, initialiseMapData, switchMap, getMapPoints, currentMapName } from "./components/Map";
 import { otherPlayers, addOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
 import "./style.css";
@@ -34,6 +34,21 @@ function handleZoom(zoom) {
 }
 
 collectUserInput(camera, handleZoom);
+
+window.addEventListener('map-transfer', e => {
+    const sourceMap = currentMapName;
+    const destinationMap = e.detail.map;
+
+    switchMap(destinationMap);
+    initializePathfinding();
+
+    const transferPoints = getMapPoints(destinationMap);
+    const returnPoint = transferPoints.find(p => p.map === sourceMap && p.type === 'transfer');
+
+    if (returnPoint) {
+        setPlayerPosition(returnPoint.x, returnPoint.y);
+    }
+});
 
 const mapLoadedPromise = new Promise((resolve, reject) => {
   fetch('/base.map')

@@ -8,16 +8,17 @@ import { ActivePoint } from "./ActivePoint";
 
 let maps = {};
 export let mapData = [];
+export let currentMapName = 'base';
 let currentPoints = [];
 export const map = new THREE.Group();
 
 // This function replaces `initialiseMapData`. It stores all maps and sets the initial map data.
 export function initialiseMapData(downloadedMaps) {
   maps = downloadedMaps;
-  if (maps['base']) {
+  if (maps[currentMapName]) {
     // Set initial mapData for other modules that might need it before rendering
-    mapData = [...maps['base'].tiles].reverse();
-    currentPoints = maps['base'].points;
+    mapData = [...maps[currentMapName].tiles].reverse();
+    currentPoints = maps[currentMapName].points;
   }
 }
 
@@ -28,6 +29,7 @@ export function initialiseMap(mapName = 'base') {
     return;
   }
   // Update mapData to the one being rendered.
+  currentMapName = mapName;
   mapData = [...maps[mapName].tiles].reverse();
   currentPoints = maps[mapName].points;
 
@@ -38,6 +40,17 @@ export function initialiseMap(mapName = 'base') {
       addTile(x, y, mapData[y][x]);
     }
   }
+}
+
+export function switchMap(mapName) {
+  initialiseMap(mapName);
+}
+
+export function getMapPoints(mapName) {
+    if (maps[mapName]) {
+        return maps[mapName].points;
+    }
+    return [];
 }
 
 function addTile(x, y, type) {

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { queueMove, position } from "./components/Player";
 import { findPath } from "./utilies/findPath";
 import { tileSize } from "./constants";
+import { getTransferPoint } from "./utilies/getTransferPoint";
 
 export function collectUserInput(camera, handleZoom) {
     window.addEventListener("keydown", (event) => {
@@ -76,6 +77,17 @@ export function collectUserInput(camera, handleZoom) {
         const to = {
             x: Math.round(intersect.x / tileSize),
             y: Math.round(intersect.y / tileSize),
+        }
+
+        const transferPoint = getTransferPoint(to.x, to.y);
+        if (transferPoint) {
+            const dx = Math.abs(position.x - to.x);
+            const dy = Math.abs(position.y - to.y);
+
+            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                window.dispatchEvent(new CustomEvent('map-transfer', { detail: { map: transferPoint.map } }));
+                return;
+            }
         }
 
         findPath({x: position.x, y: position.y}, to)

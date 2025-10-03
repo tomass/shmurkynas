@@ -79,3 +79,13 @@ export function initializePlayer(x, y) {
 
   movesQueue.length = 0;
 }
+
+export function setPlayerPosition(x, y) {
+    position.x = x;
+    position.y = y;
+
+    player.position.x = x * tileSize;
+    player.position.y = y * tileSize;
+
+    movesQueue.length = 0;
+}
