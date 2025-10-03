@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
-import { dirLight } from "./components/DirectionalLight";
+import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
 import { map, initialiseMap, initialiseMapData } from "./components/Map";
 import { otherPlayers, addOtherPlayer } from "./otherPlayers.js";
@@ -28,21 +28,9 @@ player.add(dirLight);
 const camera = Camera();
 player.add(camera);
 
-const initialShadowFrustum = {
-    left: dirLight.shadow.camera.left,
-    right: dirLight.shadow.camera.right,
-    top: dirLight.shadow.camera.top,
-    bottom: dirLight.shadow.camera.bottom,
-};
-
 function handleZoom(zoom) {
     camera.setZoom(zoom);
-
-    dirLight.shadow.camera.left = initialShadowFrustum.left / camera.zoom;
-    dirLight.shadow.camera.right = initialShadowFrustum.right / camera.zoom;
-    dirLight.shadow.camera.top = initialShadowFrustum.top / camera.zoom;
-    dirLight.shadow.camera.bottom = initialShadowFrustum.bottom / camera.zoom;
-    dirLight.shadow.camera.updateProjectionMatrix();
+    setDirLightZoom(zoom);
 }
 
 collectUserInput(camera, handleZoom);

@@ -42,7 +42,7 @@ export function collectUserInput(camera, handleZoom) {
     window.addEventListener( 'pointerdown', onPointerDown, false );
 
     window.addEventListener('wheel', event => {
-        const zoomFactor = event.deltaY > 0 ? 1.05 : 1 / 1.05;
+        const zoomFactor = event.deltaY > 0 ? 1 / 1.1 : 1.1;
         handleZoom(camera.zoom * zoomFactor);
     });
 
