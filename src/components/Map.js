@@ -7,28 +7,35 @@ import { Water } from "./Water";
 import { Car } from "./Car";
 import { Truck } from "./Truck";
 
+let maps = {};
 export let mapData = [];
-
 export const map = new THREE.Group();
 
-export function initialiseMapData(downloadedMap) {
-  mapData = downloadedMap.reverse();
-  // transformuojame, kad atitiktų vizualiai tai, kas žemėlapyje
-  //for (let y = 0; y < mapData.length; y++) {
-  //  for (let x = 0; x < mapData[y].length; x++) {
-  //    mapData[y][x] = downloadedMap[mapData.length - y - 1][x];
-  //  }
-  //}
+// This function replaces `initialiseMapData`. It stores all maps and sets the initial map data.
+export function initialiseMapData(downloadedMaps) {
+  maps = downloadedMaps;
+  if (maps['base']) {
+    // Set initial mapData for other modules that might need it before rendering
+    mapData = [...maps['base']].reverse();
+  }
 }
 
-export function initialiseMap() {
-    map.remove(...map.children);
+// This function replaces the old `initialiseMap` and will render the map.
+export function initialiseMap(mapName = 'base') {
+  if (!maps[mapName]) {
+    console.error(`Map '${mapName}' not found.`);
+    return;
+  }
+  // Update mapData to the one being rendered.
+  mapData = [...maps[mapName]].reverse();
 
-    for (let y = 0; y < mapData.length; y++) {
-      for (let x = 0; x < mapData[y].length; x++) {
-        addTile(x, y, mapData[y][x]);
-      }
+  map.remove(...map.children);
+
+  for (let y = 0; y < mapData.length; y++) {
+    for (let x = 0; x < mapData[y].length; x++) {
+      addTile(x, y, mapData[y][x]);
     }
+  }
 }
 
 function addTile(x, y, type) {

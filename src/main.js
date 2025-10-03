@@ -11,6 +11,7 @@ import { collectUserInput } from "./collectUserInput";
 import { animatePlayer } from "./animatePlayer";
 import { hitTest } from "./utilies/hitTest";
 import { initializePathfinding } from "./utilies/findPath";
+import { parseMapData } from "./utilies/mapParser.js";
 import "./websocket.js";
 
 const scene = new THREE.Scene();
@@ -37,8 +38,8 @@ const mapLoadedPromise = new Promise((resolve, reject) => {
       return response.text();
     })
     .then(text => {
-      const array2D = text.split('\n').map(line => line.split(''));
-      initialiseMapData(array2D);
+      const maps = parseMapData(text);
+      initialiseMapData(maps);
       resolve();
     })
     .catch(error => {
