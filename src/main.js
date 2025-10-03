@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
-import { DirectionalLight } from "./components/DirectionalLight";
+import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
 import { map, initialiseMap, initialiseMapData } from "./components/Map";
 import { otherPlayers, addOtherPlayer } from "./otherPlayers.js";
@@ -22,14 +22,18 @@ scene.add(otherPlayers);
 const ambientLight = new THREE.AmbientLight();
 scene.add(ambientLight);
 
-const dirLight = DirectionalLight();
 dirLight.target = player;
 player.add(dirLight);
 
 const camera = Camera();
 player.add(camera);
 
-collectUserInput(camera);
+function handleZoom(zoom) {
+    camera.setZoom(zoom);
+    setDirLightZoom(zoom);
+}
+
+collectUserInput(camera, handleZoom);
 
 const mapLoadedPromise = new Promise((resolve, reject) => {
   fetch('/base.map')
