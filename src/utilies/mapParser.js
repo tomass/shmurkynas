@@ -24,7 +24,6 @@ export function parseMapData(text) {
 
         for (let i = 0; i < pointEntries.length; i += 2) {
           const type = pointEntries[i].replace(':', '').trim();
-          if (type !== 'transfer') continue;
 
           const attributes = pointEntries[i + 1].trim().split('\n');
           const point = { type };

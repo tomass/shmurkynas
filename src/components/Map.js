@@ -4,7 +4,7 @@ import { Road } from "./Road";
 import { Tree } from "./Tree";
 import { Building } from "./Building";
 import { Water } from "./Water";
-import { TransferPoint } from "./TransferPoint";
+import { ActivePoint } from "./ActivePoint";
 
 let maps = {};
 export let mapData = [];
@@ -63,7 +63,10 @@ function addTile(x, y, type) {
   const point = currentPoints.find(p => p.x === x && p.y === (mapData.length - 1 - y));
   if (point) {
     if (point.type === 'transfer') {
-      const transferPoint = TransferPoint(x, y);
+      const transferPoint = ActivePoint(x, y, 0xffff00);
+      map.add(transferPoint);
+    } else if (point.type === 'living') {
+      const transferPoint = ActivePoint(x, y, 0x00ff00);
       map.add(transferPoint);
     }
   }
