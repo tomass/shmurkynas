@@ -5,10 +5,12 @@ import { Tree } from "./Tree";
 import { Building } from "./Building";
 import { Water } from "./Water";
 import { ActivePoint } from "./ActivePoint";
+import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition";
+import { initializePlayer } from "./Player";
 
 let maps = {};
 export let mapData = [];
-let currentPoints = [];
+export let currentPoints = [];
 export const map = new THREE.Group();
 
 // This function replaces `initialiseMapData`. It stores all maps and sets the initial map data.
@@ -60,7 +62,7 @@ function addTile(x, y, type) {
     map.add(grass);
   }
 
-  const point = currentPoints.find(p => p.x === x && p.y === (mapData.length - 1 - y));
+  const point = currentPoints.find(p => p.x === x && p.y === y);
   if (point) {
     if (point.type === 'transfer') {
       const transferPoint = ActivePoint(x, y, 0xffff00);
@@ -69,5 +71,27 @@ function addTile(x, y, type) {
       const transferPoint = ActivePoint(x, y, 0x00ff00);
       map.add(transferPoint);
     }
+  }
+}
+
+export function switchToMap(mapName) {
+  if (maps[mapName]) {
+    const newMapData = maps[mapName].tiles;
+    const newPosition = findFirstWalkablePosition(newMapData);
+
+    if (newPosition) {
+      // The y-coordinate needs to be inverted because the findFirstWalkablePosition
+      // works with the raw tile data, where y=0 is the top.
+      // The player's logical position has y=0 at the bottom.
+      const logicalY = newMapData.length - 1 - newPosition.y;
+
+      initialiseMap(mapName);
+      initializePlayer(newPosition.x, logicalY);
+      initializePathfinding(); // Re-initialize pathfinding with the new map
+    } else {
+      console.error(`No walkable position found on map: ${mapName}`);
+    }
+  } else {
+    console.error(`Map '${mapName}' not found for transfer.`);
   }
 }

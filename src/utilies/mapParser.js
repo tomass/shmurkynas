@@ -30,7 +30,11 @@ export function parseMapData(text) {
           attributes.forEach(attr => {
             const [key, value] = attr.split('=');
             if (key) {
-              const trimmedValue = value ? value.trim() : '';
+              let trimmedValue = value ? value.trim() : '';
+              if (key == 'y') {
+                // transform y to the way threejs coordinates work
+                trimmedValue = tileArray.length - 1 - Number(trimmedValue);
+              }
               point[key.trim()] = isNaN(trimmedValue) || trimmedValue === '' ? trimmedValue : Number(trimmedValue);
             }
           });

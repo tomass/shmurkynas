@@ -3,10 +3,18 @@
 ## **1. Project Overview**
 **Purpose**:
 A multiplayer tile-based game for kids where players explore maps, complete tasks, and customize living spaces.
+Tiles are square parts of maps identifiex by their position x,y. Earch tile is 42x42 threejs units in size.
 Features:
-- **Tile types**: Grass, roads, buildings, trees, *transfer tiles* (teleport to other maps), *living tiles* (purchasable homes).
+- **Tile types**: Grass, roads, buildings, trees
+- **Points**: Some points on a map are active, currently there qre:
+  - *transfer tiles* - they teleport (switch) to other maps (started with transfer: in setup file)
+  - *living tiles* - they are entrance to other maps, which can be purchased by players as their living space.
+                     (started with living: in setup file)
 - **Multiplayer**: Real-time player movement, shared world state, and living space customization.
-- **Tech Stack**: Vite (frontend), Three.js (3D rendering), [Backend: WebSockets].
+- **Tech Stack**:
+  - Vite for builing.
+  - 3D is rendered using Three.js
+  - Backend: WebSockets server helping to collect and distribute information about the game to all players.
 
 **Target Audience**:
 Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
@@ -29,18 +37,19 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 ├── /public                 # Static assets
 │   └── base.map            # Initial loaded game map
 ├── /src
-│   ├── /components         # Threejs components
-│   │   ├── Building.js     # Building object
-│   │   ├── Camera.js       # Threejs camera object
-│   │   ├── Player.js       # Player character object
-│   │   └── Renderer.js     # Threejs renderer object
-│   └── /utilities          # Utility functions
-│       ├── calculateFinalPosition.js # Calculates player position after movement is performed
-│       └── endUpInValidPosition.js # Checks if player ends up in valid position after the move
-├── /server                 # Multiplayer backend
-│   └── server.js           # Websocket server code. Running on the backend.
-├── constants.js            # Different game constants
-└── vite.config.js          # Configuration to reach websocket server from dev environment
+│   ├── /components                   # Threejs components
+│   │   ├── Building.js               # Building object
+│   │   ├── Camera.js                 # Threejs camera object
+│   │   ├── Player.js                 # Player character object
+│   │   └── Renderer.js               # Threejs renderer object
+│   ├── /utilities                    # Utility functions
+│   │   ├── calculateFinalPosition.js # Calculates player position after movement is performed
+│   │   └── endUpInValidPosition.js   # Checks if player ends up in valid position after the move
+│   └────── collectUserInput.js       # Controlling all user input and calling necessary actions
+├── /server                           # Multiplayer backend
+│   └── server.js                     # Websocket server code. Running on the backend.
+├── constants.js                      # Different constants controlling game parameters
+└── vite.config.js                    # Configuration to reach websocket server from dev environment
 
 **Key Files**:
 - `base.map`: This is a main map setup file
@@ -67,10 +76,5 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 - [tiles] followed by a character matrix of tile type characters like ŽGMPV.
 - [points] lists points in that map
 - each point starts with a text "transfer:" for transfer points and "living:" for living points
-- after point type all attributes are listed on a separate line, like:
-x=29
-y=10
-map=butas_mazas
-owner=
-price=0
-maintenance=0
+- after point type all attributes are listed on a separate line, like.
+- default map file in this format can be found in public/base.map

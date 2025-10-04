@@ -1,7 +1,8 @@
 import * as THREE from "three";
-import { queueMove, position } from "./components/Player";
-import { findPath } from "./utilies/findPath";
 import { tileSize } from "./constants";
+import { queueMove, position } from "./components/Player";
+import { currentPoints, switchToMap } from "./components/Map";
+import { findPath } from "./utilies/findPath";
 
 export function collectUserInput(camera, handleZoom) {
     window.addEventListener("keydown", (event) => {
@@ -76,6 +77,11 @@ export function collectUserInput(camera, handleZoom) {
         const to = {
             x: Math.round(intersect.x / tileSize),
             y: Math.round(intersect.y / tileSize),
+        }
+        if (Math.abs(position.x - to.x) <= 1 && Math.abs(position.y - to.y) <= 1) {
+            const clickedPoint = currentPoints.find(p => p.type === "transfer" && p.x === to.x + 1 && p.y === to.y - 1);
+            console.log('transfer to map:', clickedPoint.map);
+            switchToMap(clickedPoint.map);
         }
 
         findPath({x: position.x, y: position.y}, to)
