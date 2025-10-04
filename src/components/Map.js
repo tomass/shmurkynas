@@ -6,9 +6,9 @@ import { Building } from "./Building";
 import { Water } from "./Water";
 import { ActivePoint } from "./ActivePoint";
 
-let maps = {};
+export let maps = {};
 export let mapData = [];
-let currentPoints = [];
+export let currentPoints = [];
 export const map = new THREE.Group();
 
 // This function replaces `initialiseMapData`. It stores all maps and sets the initial map data.
