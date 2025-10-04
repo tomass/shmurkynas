@@ -78,3 +78,24 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 - each point starts with a text "transfer:" for transfer points and "living:" for living points
 - after point type all attributes are listed on a separate line, like.
 - default map file in this format can be found in public/base.map
+
+---
+
+## **5. Development and Operations**
+### **Development Commands**
+
+To get started with the project, run the following commands:
+
+- `npm install`: Install the necessary dependencies.
+- `npm run dev`: Start the frontend development server.
+- `npm run start:server`: Start the backend server.
+
+### **Key Architectural Components**
+
+- **Map Parsing**: Map data is parsed in `src/utilies/mapParser.js`.
+- **User Input**: User input is handled in `src/collectUserInput.js`.
+- **Map Rendering**: The map is rendered in `src/components/Map.js`.
+
+### **Complex Interactions**
+
+- **Camera Zoom**: When adjusting the camera zoom, you must update the camera's `zoom` property, call `updateProjectionMatrix()`, and update the shadow properties on the `DirectionalLight` to avoid visual bugs.
