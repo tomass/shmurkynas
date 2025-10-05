@@ -14,13 +14,20 @@ export function Road(x, y) {
     foundation.receiveShadow = true;
     road.add(foundation);
 
-    if ((mapData[y][x-1] === ' ') ||
-        (mapData[y][x+1] === ' ')) {
+    if ((mapData[y][x-1] === 'G') ||
+        (mapData[y][x+1] === 'G')) {
       const dash = new THREE.Mesh(
         new THREE.PlaneGeometry(10, 2, 2),
         new THREE.MeshLambertMaterial({ color: 0xeeeeee })
       );
-      dash.position.z = 1;
+      dash.position.z = 0.5;
+      road.add(dash);
+    } else {
+      const dash = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 10, 2),
+        new THREE.MeshLambertMaterial({ color: 0xeeeeee })
+      );
+      dash.position.z = 0.5;
       road.add(dash);
     }
 
