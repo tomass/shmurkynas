@@ -7,16 +7,22 @@ const PLAYERS_FILE = './players.json';
 
 const players = new Map();
 
-function logWithTimestamp(...args) {
-  const now = new Date();
-  const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
-  console.log(`${timestamp}`, ...args);
-}
-
 function dateNow() {
   const now = new Date();
-  const timestamp = now.toISOString().replace('T', ' ').substring(0, 19);
-  return timestamp;
+  const pad = (num) => num.toString().padStart(2, '0');
+  const year = now.getFullYear();
+  const month = pad(now.getMonth() + 1);
+  const day = pad(now.getDate());
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  const seconds = pad(now.getSeconds());
+
+  const formattedLocalTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  return formattedLocalTime;
+}
+
+function logWithTimestamp(...args) {
+  console.log(dateNow(), ...args);
 }
 
 // Save all players to file
@@ -86,11 +92,11 @@ wss.on('connection', async ws => {
       .filter(p => p.status === 'active') // only active players
       .map(p => ({ id: p.id, x: p.x, y: p.y }));
     if (message.type === 'resume') {
+      let x;
+      let y;
       if (message.id) {
         id = message.id;
         const existingPlayer = players.get(id);
-        let x;
-        let y;
         if (existingPlayer) {
           x = existingPlayer.x;
           y = existingPlayer.y;
