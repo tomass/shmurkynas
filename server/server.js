@@ -97,7 +97,7 @@ wss.on('connection', async ws => {
           existingPlayer.ws = ws;
           existingPlayer.status = 'active';
           existingPlayer.lastAction = dateNow();
-          debouncesSave();
+          debouncedSave();
         } else {
           logWithTimestamp('Could not find record for player with ${id}');
           x = 5;
