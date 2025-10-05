@@ -7,7 +7,6 @@ let pingInterval = null;
 
 function connect() {
   playerId = localStorage.getItem('playerId') || null;
-  const lastPosition = JSON.parse(localStorage.getItem('lastPosition'));
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
@@ -20,11 +19,11 @@ function connect() {
     clearTimeout(reconnectTimer);
 
     if (playerId) {
-      console.log('Resuming session with ID:', playerId);
+      console.log('Resuming session with ID: ', playerId);
       socket.send(JSON.stringify({ type: 'resume', id: playerId }));
-      if (lastPosition) {
-        sendPosition(lastPosition.x, lastPosition.y);
-      }
+    } else {
+      console.log('First connection, get ID');
+      socket.send(JSON.stringify({ type: 'create' }));
     }
 
     if (pingInterval) clearInterval(pingInterval);
