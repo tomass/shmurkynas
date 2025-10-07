@@ -37,9 +37,12 @@ export function createPlayerMesh(color = "white") {
 
 export const player = createPlayerMesh();
 
-export const position = {
+export const playerData = {
     x: 0,
     y: 2,
+    name: 'N/A',
+    money: 0,
+    colour: 'white',
     isActive: true,
 }
 
@@ -48,8 +51,8 @@ export const movesQueue = [];
 export function queueMove(direction) {
     const isValidMove = endsUpInValidPosition(
         {
-            x: position.x,
-            y: position.y,
+            x: playerData.x,
+            y: playerData.y,
         },
         [...movesQueue, direction]
     );
@@ -61,21 +64,36 @@ export function queueMove(direction) {
 export function stepCompleted() {
     const direction = movesQueue.shift();
 
-    if (direction === "forward")  position.y += 1;
-    if (direction === "backward") position.y -= 1;
-    if (direction === "left")     position.x -= 1;
-    if (direction === "right")    position.x += 1;
+    if (direction === "forward")  playerData.y += 1;
+    if (direction === "backward") playerData.y -= 1;
+    if (direction === "left")     playerData.x -= 1;
+    if (direction === "right")    playerData.x += 1;
 }
 
-export function initializePlayer(x, y) {
-  position.x = x;
-  position.y = y;
+export function initializePlayer(x, y, name, money, colour) {
+  playerData.x = x;
+  playerData.y = y;
+  playerData.name = name;
+  playerData.money = money;
+  playerData.colour = colour;
 
-  player.position.x = position.x * tileSize;
-  player.position.y = position.y * tileSize;
+  player.position.x = playerData.x * tileSize;
+  player.position.y = playerData.y * tileSize;
   player.children[0].position.z = 0;
 
-  position.isActive = true;
+  const playerBody = player.children[0].children[0];
+  playerBody.material.color.set(colour);
+
+  const playerNameEl = document.getElementById('playerName');
+  const playerMoneyEl = document.getElementById('playerMoney');
+  const playerColourEl = document.getElementById('playerColour');
+
+  playerNameEl.textContent = name;
+  playerNameEl.style.color = colour;
+  playerMoneyEl.textContent = `$${money}`;
+  playerColourEl.textContent = `Colour: ${colour}`;
+
+  playerData.isActive = true;
 
   movesQueue.length = 0;
 }

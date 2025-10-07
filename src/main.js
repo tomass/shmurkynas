@@ -59,8 +59,8 @@ const gameInitPromise = new Promise(resolve => {
 });
 
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
-  const { x, y, players } = initData;
-  initializePlayer(x, y);
+  const { x, y, name, money, colour, players } = initData;
+  initializePlayer(x, y, name, money, colour);
   players.forEach(playerInfo => {
     addOtherPlayer(playerInfo);
   });

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { movesQueue, stepCompleted } from "./components/Player";
-import { player, position } from "./components/Player";
+import { player, playerData } from "./components/Player";
 import { tileSize } from "./constants";
 import { sendPosition } from "./websocket";
 
@@ -20,14 +20,14 @@ export function animatePlayer() {
   // Once step has ended
   if (progress >= 1) {
     stepCompleted();
-    sendPosition(position.x, position.y);
+    sendPosition(playerData.x, playerData.y);
     moveClock.stop();
   }
 }
 
 function setPosition(progress) {
-  const startX = position.x * tileSize;
-  const startY = position.y * tileSize;
+  const startX = playerData.x * tileSize;
+  const startY = playerData.y * tileSize;
   let endX = startX;
   let endY = startY;
 

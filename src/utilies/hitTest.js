@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { mapData } from "../components/Map";
-import { player, position } from "../components/Player";
+import { player/*, position*/ } from "../components/Player";
 
 const resultDOM = document.getElementById("result-container");
 const finalScoreDOM = document.getElementById("final-score");
