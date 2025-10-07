@@ -91,7 +91,7 @@ export function initializePlayer(x, y, name, money, colour) {
   playerNameEl.textContent = name;
   playerNameEl.style.color = colour;
   playerMoneyEl.textContent = `$${money}`;
-  playerColourEl.textContent = `Colour: ${colour}`;
+  playerColourEl.style.backgroundColor = colour;
 
   playerData.isActive = true;
 
