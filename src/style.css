@@ -5,3 +5,19 @@ body {
   display: flex;
   font-family: "Press Start 2P", cursive;
 }
+
+#toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 10px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  font-family: sans-serif;
+  font-size: 18px;
+  z-index: 100;
+}

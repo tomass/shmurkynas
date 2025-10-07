@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { tileSize } from "./constants";
-import { queueMove, position } from "./components/Player";
+import { queueMove, playerData as position } from "./components/Player";
 import { currentPoints, switchToMap } from "./components/Map";
 import { findPath } from "./utilies/findPath";
 
