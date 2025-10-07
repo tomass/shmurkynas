@@ -63,6 +63,12 @@ export function collectUserInput(camera, handleZoom) {
     }
 
     function onPointerDown( event ) {
+        const toolbar = document.getElementById('toolbar');
+        const settingsContainer = document.getElementById('settings-container');
+        if (toolbar.contains(event.target) || (settingsContainer && settingsContainer.contains(event.target))) {
+            return;
+        }
+
         if (isPinching) return;
         // calculate pointer position in normalized device coordinates
         // (-1 to +1) for both components
