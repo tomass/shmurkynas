@@ -25,12 +25,31 @@ function logWithTimestamp(...args) {
   console.log(dateNow(), ...args);
 }
 
+function getRandomName() {
+  const names = ["Pimpančkiukas", "Labubas", "Barbė", "Trampampyrius", "Raganaitė", "Mokytoja"];
+    const availableNames = names.filter(name =>
+        !Array.from(players.values()).some(player => player.name === name)
+    );
+
+    if (availableNames.length === 0) {
+        // All names already used, so lets use fallback name
+        return 'Bevardis';
+    }
+
+    const randomIndex = Math.floor(Math.random() * availableNames.length);
+    return availableNames[randomIndex];
+}
+
 // Save all players to file
 async function savePlayers() {
   const playersData = Array.from(players.values()).map(p => ({
     id: p.id,
     x: p.x,
     y: p.y,
+    name: p.name,
+    money: p.money,
+    education: p.education,
+    colour: p.colour,
     status: p.status,
     lastAction: p.lastAction,
     // Don't store WebSocket objects as they can't be serialized
@@ -92,38 +111,73 @@ wss.on('connection', async ws => {
       .filter(p => p.status === 'active') // only active players
       .map(p => ({ id: p.id, x: p.x, y: p.y }));
     if (message.type === 'resume') {
-      let x;
-      let y;
+      let playerState;
       if (message.id) {
         id = message.id;
         const existingPlayer = players.get(id);
         if (existingPlayer) {
-          x = existingPlayer.x;
-          y = existingPlayer.y;
-          existingPlayer.ws = ws;
-          existingPlayer.status = 'active';
-          existingPlayer.lastAction = dateNow();
+          playerState = existingPlayer;
+          if (!playerState.hasOwnProperty('name')) {
+            playerState.name = getRandomName();
+          }
+          if (!playerState.hasOwnProperty('money')) {
+            playerState.money = 0;
+          }
+          if (!playerState.hasOwnProperty('colour')) {
+            playerState.colour = 'white';
+          }
+          playerState.ws = ws;
+          playerState.status = 'active';
+          playerState.lastAction = dateNow();
           debouncedSave();
         } else {
           logWithTimestamp('Could not find record for player with ${id}');
-          x = 5;
-          y = 5; // Check that player is not placed on top of another player
-          const playerState = { id, ws, x, y, status: 'active', lastAction: dateNow() };
+          playerState.x = 5;
+          playerState.y = 5; // Check that player is not placed on top of another player
+          const playerState = {
+            id,
+            ws,
+            x: playerState.x,
+            y: playerState.y,
+            name: getRandomName(),
+            money: 0,
+            colour: 'white',
+            status: 'active',
+            lastAction: dateNow()
+          };
           players.set(id, playerState);
           debouncedSave();
         }
       }
       // Send initialization data to the new client
-      ws.send(JSON.stringify({ type: 'init', id, x, y, players: allPlayers, lastAction: dateNow() }));
+      ws.send(JSON.stringify({
+        type: 'init',
+        id,
+        x: playerState.x,
+        y: playerState.y,
+        name: playerState.name,
+        money: playerState.money,
+        colour: playerState.colour,
+        players: allPlayers,
+        lastAction: dateNow()
+      }));
     } else if (message.type === 'create') {
       id = uuidv4();
       const x = 3;
       const y = 3; // TODO: calculate empty position!
-      // Send initialization data to the new client
-      ws.send(JSON.stringify({ type: 'init', id, x, y, players: allPlayers }));
       // Add the new player to the server state
-      const playerState = { id, ws, x, y, status: 'active', lastAction: dateNow() };
+      const playerState = { id, ws, x, y, name: getRandomName(), money: 0, colour: 'white', status: 'active', lastAction: dateNow() };
       players.set(id, playerState);
+      // Send initialization data to the new client
+      ws.send(JSON.stringify({
+        type: 'init',
+        id,
+        x,
+        y,
+        name: playerState.name,
+        money: playerState.money,
+        colour: playerState.colour,
+        players: allPlayers }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
 
