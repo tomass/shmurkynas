@@ -13,6 +13,7 @@ import { hitTest } from "./utilies/hitTest";
 import { initializePathfinding } from "./utilies/findPath";
 import { parseMapData } from "./utilies/mapParser.js";
 import "./websocket.js";
+import "./settings.js";
 
 const scene = new THREE.Scene();
 scene.add(player);

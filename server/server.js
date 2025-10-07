@@ -214,6 +214,18 @@ wss.on('connection', async ws => {
         player.lastAction = dateNow();
         debouncedSave();
       }
+    } else if (message.type === 'settings') {
+      const player = players.get(id);
+      if (player) {
+        player.name = message.name;
+        player.colour = message.colour;
+        player.lastAction = dateNow();
+        debouncedSave();
+
+        // Broadcast the settings change to all other clients
+        const updateMessage = JSON.stringify({ type: 'playerUpdated', id, name: message.name, colour: message.colour });
+        broadcastToOthers(id, updateMessage);
+      }
     }
   });
 

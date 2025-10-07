@@ -60,6 +60,11 @@ function connect() {
           removeOtherPlayer(message.id);
         }
         break;
+      case 'playerUpdated':
+        if (message.id !== playerId) {
+          updateOtherPlayer(message);
+        }
+        break;
     }
   });
 
@@ -80,6 +85,17 @@ export function sendPosition(x, y) {
     };
     socket.send(JSON.stringify(message));
     localStorage.setItem('lastPosition', JSON.stringify({ x, y }));
+  }
+}
+
+export function sendSettings(name, colour) {
+  if (socket.readyState === WebSocket.OPEN) {
+    const message = {
+      type: 'settings',
+      name: name,
+      colour: colour
+    };
+    socket.send(JSON.stringify(message));
   }
 }
 

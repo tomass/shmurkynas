@@ -6,8 +6,8 @@ export const otherPlayers = new THREE.Group();
 const otherPlayersMap = new Map();
 
 export function addOtherPlayer(playerInfo) {
-    const { id, x, y } = playerInfo;
-    const playerMesh = createPlayerMesh("blue");
+    const { id, x, y, colour } = playerInfo;
+    const playerMesh = createPlayerMesh(colour || "blue");
     playerMesh.position.x = x * tileSize;
     playerMesh.position.y = y * tileSize;
     otherPlayers.add(playerMesh);
@@ -23,10 +23,15 @@ export function removeOtherPlayer(playerId) {
 }
 
 export function updateOtherPlayer(playerInfo) {
-    const { id, x, y } = playerInfo;
+    const { id, x, y, name, colour } = playerInfo;
     const playerMesh = otherPlayersMap.get(id);
     if (playerMesh) {
-        playerMesh.position.x = x * tileSize;
-        playerMesh.position.y = y * tileSize;
+        if (x !== undefined && y !== undefined) {
+            playerMesh.position.x = x * tileSize;
+            playerMesh.position.y = y * tileSize;
+        }
+        if (colour) {
+            playerMesh.material.color.set(colour);
+        }
     }
 }
