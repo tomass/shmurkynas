@@ -5,13 +5,35 @@ import { Tree } from "./Tree";
 import { Building } from "./Building";
 import { Water } from "./Water";
 import { ActivePoint } from "./ActivePoint";
+import { Coin } from "./Coin.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition";
 import { initializePlayer } from "./Player";
 
 let maps = {};
 export let mapData = [];
 export let currentPoints = [];
+export let gamePoints = [];
 export const map = new THREE.Group();
+const gamePointsGroup = new THREE.Group();
+map.add(gamePointsGroup);
+
+export function drawGamePoints() {
+    gamePointsGroup.remove(...gamePointsGroup.children);
+    gamePoints.forEach(point => {
+        if (point.type === 'coin') {
+            const coin = Coin(point.x, point.y, 0xffd700);
+            gamePointsGroup.add(coin);
+        }
+    });
+}
+
+export function setGamePoints(points) {
+    gamePoints.length = 0;
+    if (points) {
+        gamePoints.push(...points);
+    }
+    drawGamePoints();
+}
 
 // This function replaces `initialiseMapData`. It stores all maps and sets the initial map data.
 export function initialiseMapData(downloadedMaps) {
@@ -34,12 +56,14 @@ export function initialiseMap(mapName = 'base') {
   currentPoints = maps[mapName].points;
 
   map.remove(...map.children);
+  map.add(gamePointsGroup);
 
   for (let y = 0; y < mapData.length; y++) {
     for (let x = 0; x < mapData[y].length; x++) {
       addTile(x, y, mapData[y][x]);
     }
   }
+  drawGamePoints();
 }
 
 function addTile(x, y, type) {

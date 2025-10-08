@@ -1,11 +1,31 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import { promises as fs} from 'fs';
+import { promises as fs } from 'fs';
+import { parseMapData } from '../shared/mapParser.js';
+import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval } from '../src/constants.js';
 
 const wss = new WebSocketServer({ port: 8088 });
 const PLAYERS_FILE = './players.json';
 
 const players = new Map();
+const gamePoints = [];
+let mapTiles = [];
+
+// Load map data on server startup
+async function loadMapData() {
+    try {
+        const mapText = await fs.readFile('./public/base.map', 'utf8');
+        const maps = parseMapData(mapText);
+        if (maps['base']) {
+            mapTiles = maps['base'].tiles;
+            logWithTimestamp('Base map data loaded successfully.');
+        } else {
+            logWithTimestamp('ERROR: "base" map not found in map file.');
+        }
+    } catch (error) {
+        logWithTimestamp('Error loading map data:', error);
+    }
+}
 
 function dateNow() {
   const now = new Date();
@@ -86,6 +106,14 @@ async function loadPlayers() {
   }
 }
 
+function broadcastToAll(message) {
+    for (const player of players.values()) {
+        if (player.status === 'active' && player.ws?.readyState === player.ws.OPEN) {
+            player.ws.send(message);
+        }
+    }
+}
+
 function broadcastToOthers(senderId, message) {
   for (const [playerId, player] of players.entries()) {
     if (playerId !== senderId &&
@@ -98,7 +126,7 @@ function broadcastToOthers(senderId, message) {
 
 wss.on('connection', async ws => {
   if (players.size === 0) {
-    await loadPlayers();
+    await Promise.all([loadPlayers(), loadMapData()]);
   }
   let id;
 
@@ -159,6 +187,7 @@ wss.on('connection', async ws => {
         money: playerState.money,
         colour: playerState.colour,
         players: allPlayers,
+        gamePoints,
         lastAction: dateNow()
       }));
     } else if (message.type === 'create') {
@@ -177,7 +206,9 @@ wss.on('connection', async ws => {
         name: playerState.name,
         money: playerState.money,
         colour: playerState.colour,
-        players: allPlayers }));
+        players: allPlayers,
+        gamePoints
+      }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
 
@@ -244,3 +275,51 @@ wss.on('connection', async ws => {
 });
 
 logWithTimestamp('WebSocket server started on port 8088');
+
+function spawnCoin() {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    const isTime = (currentHour > coinStartTime.hour || (currentHour === coinStartTime.hour && currentMinute >= coinStartTime.minute)) &&
+                   (currentHour < coinEndTime.hour || (currentHour === coinEndTime.hour && currentMinute <= coinEndTime.minute));
+
+    if (!isTime) {
+        return;
+    }
+
+    const coins = gamePoints.filter(p => p.type === 'coin');
+    if (coins.length >= maxCoins) {
+        return;
+    }
+
+    if (Math.random() > coinAppearanceProbability) {
+        return;
+    }
+
+    const grassTiles = [];
+    for (let y = 0; y < mapTiles.length; y++) {
+        for (let x = 0; x < mapTiles[y].length; x++) {
+            if (mapTiles[y][x] === 'Ž') {
+                grassTiles.push({ x, y });
+            }
+        }
+    }
+
+    if (grassTiles.length === 0) {
+        logWithTimestamp("No grass tiles found to spawn a coin.");
+        return;
+    }
+
+    const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
+    const logicalY = mapTiles.length - 1 - randomTile.y;
+
+    const newCoin = { type: 'coin', x: randomTile.x, y: logicalY };
+    gamePoints.push(newCoin);
+    logWithTimestamp(`New coin spawned at (${newCoin.x}, ${newCoin.y})`);
+
+    const message = JSON.stringify({ type: 'newCoin', gamePoints });
+    broadcastToAll(message);
+}
+
+setInterval(spawnCoin, coinAppearanceInterval);

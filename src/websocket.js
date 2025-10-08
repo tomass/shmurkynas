@@ -1,4 +1,5 @@
 import { addOtherPlayer, removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
+import { setGamePoints } from './components/Map.js';
 
 let socket;
 let playerId = null;
@@ -42,8 +43,13 @@ function connect() {
       case 'init':
         playerId = message.id;
         localStorage.setItem('playerId', playerId);
+        setGamePoints(message.gamePoints);
         const gameInitEvent = new CustomEvent('game-init', { detail: message });
         window.dispatchEvent(gameInitEvent);
+        break;
+      case 'newCoin':
+        setGamePoints(message.gamePoints);
+        // We might need a way to redraw the map or just the points
         break;
       case 'newPlayer':
         if (message.player.id !== playerId) {

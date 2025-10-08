@@ -11,7 +11,7 @@ import { collectUserInput } from "./collectUserInput";
 import { animatePlayer } from "./animatePlayer";
 import { hitTest } from "./utilies/hitTest";
 import { initializePathfinding } from "./utilies/findPath";
-import { parseMapData } from "./utilies/mapParser.js";
+import { parseMapData } from "../shared/mapParser.js";
 import "./websocket.js";
 import "./settings.js";
 
