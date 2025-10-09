@@ -94,6 +94,12 @@ export function sendPosition(x, y) {
   }
 }
 
+export function sendMessage(message) {
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(message));
+  }
+}
+
 export function sendSettings(name, colour) {
   if (socket.readyState === WebSocket.OPEN) {
     const message = {
