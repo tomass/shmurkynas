@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { movesQueue, stepCompleted } from "./components/Player";
 import { player, playerData } from "./components/Player";
 import { tileSize } from "./constants";
-import { sendPosition } from "./websocket";
+import { sendPosition, sendMessage } from "./websocket";
+import { gamePoints } from "./components/Map";
 
 const moveClock = new THREE.Clock(false);
 
@@ -21,6 +22,12 @@ export function animatePlayer() {
   if (progress >= 1) {
     stepCompleted();
     sendPosition(playerData.x, playerData.y);
+
+    const coin = gamePoints.find(p => p.type === 'coin' && p.x === playerData.x && p.y === playerData.y);
+    if (coin) {
+      sendMessage({ type: 'coinCollected', x: coin.x, y: coin.y });
+    }
+
     moveClock.stop();
   }
 }

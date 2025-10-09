@@ -1,12 +1,13 @@
 import { addOtherPlayer, removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
 import { setGamePoints } from './components/Map.js';
+import { updatePlayerMoney } from './components/Player.js';
 
 let socket;
 let playerId = null;
 let reconnectTimer = null;
 let pingInterval = null;
 
-function connect() {
+export function connect() {
   playerId = localStorage.getItem('playerId') || null;
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -71,6 +72,12 @@ function connect() {
           updateOtherPlayer(message);
         }
         break;
+      case 'gamePointsUpdated':
+        setGamePoints(message.gamePoints);
+        break;
+      case 'updateMoney':
+        updatePlayerMoney(message.money);
+        break;
     }
   });
 
@@ -94,6 +101,12 @@ export function sendPosition(x, y) {
   }
 }
 
+export function sendMessage(message) {
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(message));
+  }
+}
+
 export function sendSettings(name, colour) {
   if (socket.readyState === WebSocket.OPEN) {
     const message = {
@@ -104,5 +117,3 @@ export function sendSettings(name, colour) {
     socket.send(JSON.stringify(message));
   }
 }
-
-connect();
