@@ -32,6 +32,20 @@ export function Camera() {
     this.updateProjectionMatrix();
   }
 
+  camera.handleResize = function() {
+    const viewRatio = window.innerWidth / window.innerHeight;
+    const newWidth  = viewRatio < 1 ? size : size * viewRatio;
+    const newHeight = viewRatio < 1 ? size / viewRatio : size;
+    const viewWidth = 1; // This is from the original implementation
+
+    this.left   = viewWidth * newWidth  / -1;
+    this.right  = viewWidth * newWidth  /  1;
+    this.top    = viewWidth * newHeight /  1;
+    this.bottom = viewWidth * newHeight / -1;
+
+    this.updateProjectionMatrix();
+  }
+
   camera.setZoom(1.0);
 
   return camera;

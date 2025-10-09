@@ -74,6 +74,11 @@ Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
 const renderer = Renderer();
 renderer.setAnimationLoop(animate);
 
+window.addEventListener('resize', () => {
+    camera.handleResize();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 function animate() {
   //animateVehicles();
   animatePlayer();
