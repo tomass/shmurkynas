@@ -12,7 +12,7 @@ import { animatePlayer } from "./animatePlayer";
 import { hitTest } from "./utilies/hitTest";
 import { initializePathfinding } from "./utilies/findPath";
 import { parseMapData } from "../shared/mapParser.js";
-import "./websocket.js";
+import { connect } from "./websocket.js";
 import "./settings.js";
 
 const scene = new THREE.Scene();
@@ -58,6 +58,8 @@ const gameInitPromise = new Promise(resolve => {
     resolve(e.detail);
   }, { once: true });
 });
+
+connect();
 
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
   const { x, y, name, money, colour, players } = initData;

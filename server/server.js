@@ -124,10 +124,13 @@ function broadcastToOthers(senderId, message) {
   }
 }
 
-wss.on('connection', async ws => {
-  if (players.size === 0) {
+// Load initial data
+(async () => {
     await Promise.all([loadPlayers(), loadMapData()]);
-  }
+})();
+
+wss.on('connection', async ws => {
+  logWithTimestamp('Client connected');
   let id;
 
   ws.on('message', data => {
@@ -256,6 +259,34 @@ wss.on('connection', async ws => {
         // Broadcast the settings change to all other clients
         const updateMessage = JSON.stringify({ type: 'playerUpdated', id, name: message.name, colour: message.colour });
         broadcastToOthers(id, updateMessage);
+      }
+    } else if (message.type === 'coinCollected') {
+      const player = players.get(id);
+      if (player) {
+        const coinIndex = gamePoints.findIndex(p => p.type === 'coin' && p.x === message.x && p.y === message.y);
+
+        if (coinIndex !== -1) {
+          // 1. Remove coin from the array
+          gamePoints.splice(coinIndex, 1);
+
+          // 2. Register +1 money for the player
+          player.money += 1;
+          player.lastAction = dateNow();
+          debouncedSave();
+
+          // 3. Send updated positions of coins to all players
+          const coinsUpdateMessage = JSON.stringify({ type: 'gamePointsUpdated', gamePoints });
+          broadcastToAll(coinsUpdateMessage);
+
+          // 4. Send a message to the user with increased total amount of his money
+          const moneyUpdateMessage = JSON.stringify({ type: 'updateMoney', money: player.money });
+          ws.send(moneyUpdateMessage);
+        } else {
+          // Coin doesn't exist, maybe another player collected it.
+          // Send current coin state to the player.
+          const coinsUpdateMessage = JSON.stringify({ type: 'gamePointsUpdated', gamePoints });
+          ws.send(coinsUpdateMessage);
+        }
       }
     }
   });

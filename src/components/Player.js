@@ -97,3 +97,11 @@ export function initializePlayer(x, y, name, money, colour) {
 
   movesQueue.length = 0;
 }
+
+export function updatePlayerMoney(money) {
+  playerData.money = money;
+  const playerMoneyEl = document.getElementById('playerMoney');
+  if (playerMoneyEl) {
+    playerMoneyEl.textContent = `$${money}`;
+  }
+}
