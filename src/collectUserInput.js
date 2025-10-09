@@ -86,8 +86,10 @@ export function collectUserInput(camera, handleZoom) {
         }
         if (Math.abs(position.x - to.x) <= 1 && Math.abs(position.y - to.y) <= 1) {
             const clickedPoint = currentPoints.find(p => p.type === "transfer" && p.x === to.x + 1 && p.y === to.y - 1);
-            console.log('transfer to map:', clickedPoint.map);
-            switchToMap(clickedPoint.map);
+            if (clickedPoint) {
+              console.log('transfer to map:', clickedPoint.map);
+              switchToMap(clickedPoint.map);
+            }
         }
 
         findPath({x: position.x, y: position.y}, to)
