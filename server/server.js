@@ -10,19 +10,14 @@ const GAMEPOINTS_FILE = './gamePoints.json';
 
 const players = new Map();
 let gamePoints = [];
-let mapTiles = [];
+let maps = {};
 
 // Load map data on server startup
 async function loadMapData() {
     try {
         const mapText = await fs.readFile('./public/base.map', 'utf8');
-        const maps = parseMapData(mapText);
-        if (maps['base']) {
-            mapTiles = maps['base'].tiles;
-            logWithTimestamp('Base map data loaded successfully.');
-        } else {
-            logWithTimestamp('ERROR: "base" map not found in map file.');
-        }
+        maps = parseMapData(mapText);
+        logWithTimestamp('Map data loaded successfully.');
     } catch (error) {
         logWithTimestamp('Error loading map data:', error);
     }
@@ -184,6 +179,7 @@ wss.on('connection', async ws => {
           }
           playerState.ws = ws;
           playerState.status = 'active';
+          playerState.map = 'base';
           playerState.lastAction = dateNow();
           debouncedSave();
         } else {
@@ -195,6 +191,7 @@ wss.on('connection', async ws => {
             ws,
             x: playerState.x,
             y: playerState.y,
+            map: 'base',
             name: getRandomName(),
             money: 0,
             colour: 'white',
@@ -223,7 +220,7 @@ wss.on('connection', async ws => {
       const x = 3;
       const y = 3; // TODO: calculate empty position!
       // Add the new player to the server state
-      const playerState = { id, ws, x, y, name: getRandomName(), money: 0, colour: 'white', status: 'active', lastAction: dateNow() };
+      const playerState = { id, ws, x, y, map: 'base', name: getRandomName(), money: 0, colour: 'white', status: 'active', lastAction: dateNow() };
       players.set(id, playerState);
       // Send initialization data to the new client
       ws.send(JSON.stringify({
@@ -285,10 +282,16 @@ wss.on('connection', async ws => {
         const updateMessage = JSON.stringify({ type: 'playerUpdated', id, name: message.name, colour: message.colour });
         broadcastToOthers(id, updateMessage);
       }
+    } else if (message.type === 'mapTransfer') {
+      const player = players.get(id);
+      if (player) {
+        player.map = message.map;
+        debouncedSave();
+      }
     } else if (message.type === 'coinCollected') {
       const player = players.get(id);
       if (player) {
-        const coinIndex = gamePoints.findIndex(p => p.type === 'coin' && p.x === message.x && p.y === message.y);
+        const coinIndex = gamePoints.findIndex(p => p.type === 'coin' && p.x === message.x && p.y === message.y && p.map === player.map);
 
         if (coinIndex !== -1) {
           // 1. Remove coin from the array
@@ -354,6 +357,15 @@ function spawnCoin() {
         return;
     }
 
+    const publicMaps = Object.entries(maps).filter(([, mapData]) => mapData.type === 'public');
+    if (publicMaps.length === 0) {
+        logWithTimestamp("No public maps found to spawn a coin.");
+        return;
+    }
+
+    const [mapName, mapData] = publicMaps[Math.floor(Math.random() * publicMaps.length)];
+    const mapTiles = mapData.tiles;
+
     const grassTiles = [];
     for (let y = 0; y < mapTiles.length; y++) {
         for (let x = 0; x < mapTiles[y].length; x++) {
@@ -364,14 +376,14 @@ function spawnCoin() {
     }
 
     if (grassTiles.length === 0) {
-        logWithTimestamp("No grass tiles found to spawn a coin.");
+        logWithTimestamp(`No grass tiles found on map '${mapName}' to spawn a coin.`);
         return;
     }
 
     const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
     const logicalY = mapTiles.length - 1 - randomTile.y;
 
-    const newCoin = { type: 'coin', x: randomTile.x, y: logicalY };
+    const newCoin = { type: 'coin', x: randomTile.x, y: logicalY, map: mapName };
     gamePoints.push(newCoin);
     debouncedGamePointsSave();
     logWithTimestamp(`New coin spawned at (${newCoin.x}, ${newCoin.y})`);

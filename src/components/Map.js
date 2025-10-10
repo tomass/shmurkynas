@@ -13,6 +13,7 @@ let maps = {};
 export let mapData = [];
 export let currentPoints = [];
 export let gamePoints = [];
+export let currentMapName = 'base';
 export const map = new THREE.Group();
 const gamePointsGroup = new THREE.Group();
 map.add(gamePointsGroup);
@@ -20,7 +21,7 @@ map.add(gamePointsGroup);
 export function drawGamePoints() {
     gamePointsGroup.remove(...gamePointsGroup.children);
     gamePoints.forEach(point => {
-        if (point.type === 'coin') {
+        if (point.type === 'coin' && point.map === currentMapName) {
             const coin = Coin(point.x, point.y, 0xffd700);
             gamePointsGroup.add(coin);
         }
@@ -52,6 +53,7 @@ export function initialiseMap(mapName = 'base') {
     return;
   }
   // Update mapData to the one being rendered.
+  currentMapName = mapName;
   mapData = [...maps[mapName].tiles].reverse();
   currentPoints = maps[mapName].points;
 
@@ -98,7 +100,7 @@ function addTile(x, y, type) {
   }
 }
 
-export function switchToMap(mapName) {
+export function switchToMap(mapName, initializePathfinding) {
   if (maps[mapName]) {
     const newMapData = maps[mapName].tiles;
     const newPosition = findFirstWalkablePosition(newMapData);
