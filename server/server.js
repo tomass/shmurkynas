@@ -6,9 +6,10 @@ import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAp
 
 const wss = new WebSocketServer({ port: 8088 });
 const PLAYERS_FILE = './players.json';
+const GAMEPOINTS_FILE = './gamePoints.json';
 
 const players = new Map();
-const gamePoints = [];
+let gamePoints = [];
 let mapTiles = [];
 
 // Load map data on server startup
@@ -77,10 +78,21 @@ async function savePlayers() {
   await fs.writeFile(PLAYERS_FILE, JSON.stringify(playersData, null, 2));
 }
 
+// Save all game points to file
+async function saveGamePoints() {
+  await fs.writeFile(GAMEPOINTS_FILE, JSON.stringify(gamePoints, null, 2));
+}
+
 let saveDebounce;
 function debouncedSave() {
   clearTimeout(saveDebounce);
   saveDebounce = setTimeout(savePlayers, 10000); // Save every 1s max
+}
+
+let saveGamePointsDebounce;
+function debouncedGamePointsSave() {
+  clearTimeout(saveGamePointsDebounce);
+  saveGamePointsDebounce = setTimeout(saveGamePoints, 10000); // Save every 1s max
 }
 
 // Load players from file on startup
@@ -106,6 +118,19 @@ async function loadPlayers() {
   }
 }
 
+// Load game points from file on startup
+async function loadGamePoints() {
+  try {
+    const data = await fs.readFile(GAMEPOINTS_FILE, 'utf8');
+    gamePoints = JSON.parse(data);
+    logWithTimestamp(`Loaded ${gamePoints.length} game points from file`);
+  } catch (err) {
+    if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+      logWithTimestamp('Error loading game points:', err);
+    }
+  }
+}
+
 function broadcastToAll(message) {
     for (const player of players.values()) {
         if (player.status === 'active' && player.ws?.readyState === player.ws.OPEN) {
@@ -126,7 +151,7 @@ function broadcastToOthers(senderId, message) {
 
 // Load initial data
 (async () => {
-    await Promise.all([loadPlayers(), loadMapData()]);
+    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints()]);
 })();
 
 wss.on('connection', async ws => {
@@ -268,6 +293,7 @@ wss.on('connection', async ws => {
         if (coinIndex !== -1) {
           // 1. Remove coin from the array
           gamePoints.splice(coinIndex, 1);
+          debouncedGamePointsSave();
 
           // 2. Register +1 money for the player
           player.money += 1;
@@ -347,6 +373,7 @@ function spawnCoin() {
 
     const newCoin = { type: 'coin', x: randomTile.x, y: logicalY };
     gamePoints.push(newCoin);
+    debouncedGamePointsSave();
     logWithTimestamp(`New coin spawned at (${newCoin.x}, ${newCoin.y})`);
 
     const message = JSON.stringify({ type: 'newCoin', gamePoints });
