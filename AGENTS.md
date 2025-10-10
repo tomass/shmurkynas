@@ -73,6 +73,7 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 ### **Setup file example**
 - Setup file consists of multiple maps, all of which have such components:
 - [map=base] where base is the name of the map
+- section with map attributes, for example line: type=public
 - [tiles] followed by a character matrix of tile type characters like ŽGMPV.
 - [points] lists points in that map
 - each point starts with a text "transfer:" for transfer points and "living:" for living points
