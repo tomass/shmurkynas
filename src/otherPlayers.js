@@ -60,3 +60,9 @@ export function updateOtherPlayer(playerInfo) {
         }
     }
 }
+
+export function updateAllOtherPlayers() {
+    otherPlayersMap.forEach((playerRecord) => {
+        updateOtherPlayer(playerRecord.playerInfo);
+    });
+}
