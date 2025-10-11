@@ -165,6 +165,7 @@ wss.on('connection', async ws => {
     let allPlayers = Array.from(players.values())
       .filter(p => p.status === 'active') // only active players
       .map(p => ({ id: p.id, x: p.x, y: p.y }));
+    let newPlayerMessage;
     if (message.type === 'resume') {
       let playerState;
       if (message.id) {
@@ -217,6 +218,8 @@ wss.on('connection', async ws => {
         gamePoints,
         lastAction: dateNow()
       }));
+      newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, colour: playerState.colour } });
+
     } else if (message.type === 'create') {
       id = uuidv4();
       const x = 3;
@@ -238,6 +241,7 @@ wss.on('connection', async ws => {
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
+      newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, colour: playerState.colour } });
 
     } else if (message.type === 'move') {
       const player = players.get(id);
@@ -249,21 +253,8 @@ wss.on('connection', async ws => {
         debouncedSave();
 
         // Broadcast the move to all other clients
-        const moveMessage = JSON.stringify({ type: 'playerMoved', id, x: message.x, y: message.y });
+        const moveMessage = JSON.stringify({ type: 'playerMoved', id, x: message.x, y: message.y, colour: player.colour });
         broadcastToOthers(id, moveMessage);
-      }
-
-      if (message.type === 'resume' || message.type === 'create') {
-        // if old player has connected again or a new player has connected, inform other players
-
-        // Get current players before adding the new one
-        allPlayers = Array.from(players.values())
-          .filter(p => p.status === 'active') // only active players
-          .map(p => ({ id: p.id, x: p.x, y: p.y }));
-
-        // Notify all other players about the new player
-        const newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x, y } });
-        broadcastToOthers(id, newPlayerMessage);
       }
     } else if (message.type === 'ping') {
       const player = players.get(id);
@@ -319,6 +310,18 @@ wss.on('connection', async ws => {
           ws.send(coinsUpdateMessage);
         }
       }
+    }
+
+    if (message.type === 'resume' || message.type === 'create') {
+      // if old player has connected again or a new player has connected, inform other players
+
+      // Get current players before adding the new one
+      allPlayers = Array.from(players.values())
+        .filter(p => p.status === 'active') // only active players
+        .map(p => ({ id: p.id, x: p.x, y: p.y }));
+
+      // Notify all other players about the new player
+      broadcastToOthers(id, newPlayerMessage);
     }
   });
 

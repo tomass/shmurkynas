@@ -1,5 +1,5 @@
 import { sendSettings } from './websocket.js';
-import { playerData } from './components/Player.js';
+import { playerData, updatePlayerColour } from './components/Player.js';
 
 function initializeSettings() {
   const settingsContainer = document.getElementById('settings-container');
@@ -37,6 +37,7 @@ function initializeSettings() {
         const newName = nameInput.value;
         const newColour = colourInput.value;
         sendSettings(newName, newColour);
+        updatePlayerColour(newColour);
 
         playerData.name = newName;
         playerData.colour = newColour;

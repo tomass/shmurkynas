@@ -31,7 +31,11 @@ export function updateOtherPlayer(playerInfo) {
             playerMesh.position.y = y * tileSize;
         }
         if (colour) {
-            playerMesh.material.color.set(colour);
+            // two children[0].children[0] here represent the threejs object inside:
+            // there is a group (first child) and then there is a body (second child)
+            playerMesh.children[0].children[0].material.color.set(colour);
         }
+    } else {
+        addOtherPlayer(playerInfo);
     }
 }

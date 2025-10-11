@@ -90,7 +90,7 @@ export function initializePlayer(x, y, name, money, colour) {
 
   playerNameEl.textContent = name;
   playerNameEl.style.color = colour;
-  playerMoneyEl.textContent = `$${money}`;
+  playerMoneyEl.textContent = `€${money}`;
   playerColourEl.style.backgroundColor = colour;
 
   playerData.isActive = true;
@@ -104,4 +104,10 @@ export function updatePlayerMoney(money) {
   if (playerMoneyEl) {
     playerMoneyEl.textContent = `$${money}`;
   }
+}
+
+export function updatePlayerColour(colour) {
+  playerData.colour = colour;
+  const playerBody = player.children[0].children[0];
+  playerBody.material.color.set(colour);
 }
