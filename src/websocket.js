@@ -54,7 +54,7 @@ export function connect() {
         break;
       case 'newPlayer':
         if (message.player.id !== playerId) {
-          addOtherPlayer(message.player);
+          updateOtherPlayer(message.player);
         }
         break;
       case 'playerMoved':

@@ -4,7 +4,7 @@ import { Camera } from "./components/Camera";
 import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
 import { map, initialiseMap, initialiseMapData, switchToMap } from "./components/Map";
-import { otherPlayers, addOtherPlayer } from "./otherPlayers.js";
+import { otherPlayers, updateOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
 import "./style.css";
 import { collectUserInput } from "./collectUserInput";
@@ -64,10 +64,10 @@ connect();
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
   const { x, y, name, money, colour, players } = initData;
   initializePlayer(x, y, name, money, colour);
-  players.forEach(playerInfo => {
-    addOtherPlayer(playerInfo);
-  });
   initialiseMap();
+  players.forEach(playerInfo => {
+    updateOtherPlayer(playerInfo);
+  });
   initializePathfinding();
 });
 
