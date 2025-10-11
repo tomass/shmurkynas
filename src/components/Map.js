@@ -15,7 +15,7 @@ export let currentPoints = [];
 export let gamePoints = [];
 export let currentMapName = 'base';
 export const map = new THREE.Group();
-const gamePointsGroup = new THREE.Group();
+export const gamePointsGroup = new THREE.Group();
 map.add(gamePointsGroup);
 
 export function drawGamePoints() {
