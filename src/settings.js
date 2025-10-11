@@ -17,11 +17,15 @@ function initializeSettings() {
       const nameInput = document.getElementById('new-player-name');
       const colourInput = document.getElementById('new-player-colour');
 
-      settingsButton.addEventListener('click', () => {
+      const openSettings = (event) => {
+        event.preventDefault();
         nameInput.value = playerData.name;
         colourInput.value = playerData.colour;
         settingsDialog.style.display = 'block';
-      });
+      }
+
+      settingsButton.addEventListener('touchend', openSettings);
+      settingsButton.addEventListener('click', openSettings);
 
       closeButton.addEventListener('click', () => {
         settingsDialog.style.display = 'none';
