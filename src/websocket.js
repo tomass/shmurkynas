@@ -1,4 +1,4 @@
-import { addOtherPlayer, removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
+import { removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
 import { setGamePoints, currentMapName } from './components/Map.js';
 import { updatePlayerMoney } from './components/Player.js';
 
