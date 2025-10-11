@@ -70,6 +70,10 @@ async function savePlayers() {
     lastAction: p.lastAction,
     // Don't store WebSocket objects as they can't be serialized
   }));
+
+  // Sort players by lastAction (newest first) as strings
+  playersData.sort((a, b) => b.lastAction.localeCompare(a.lastAction));
+
   await fs.writeFile(PLAYERS_FILE, JSON.stringify(playersData, null, 2));
 }
 
@@ -184,13 +188,11 @@ wss.on('connection', async ws => {
           debouncedSave();
         } else {
           logWithTimestamp('Could not find record for player with ${id}');
-          playerState.x = 5;
-          playerState.y = 5; // Check that player is not placed on top of another player
-          const playerState = {
+          playerState = {
             id,
             ws,
-            x: playerState.x,
-            y: playerState.y,
+            x: 5,
+            y: 5,
             map: 'base',
             name: getRandomName(),
             money: 0,
