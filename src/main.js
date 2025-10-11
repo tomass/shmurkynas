@@ -3,7 +3,7 @@ import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
 import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
-import { map, initialiseMap, initialiseMapData, switchToMap } from "./components/Map";
+import { map, initialiseMap, initialiseMapData, switchToMap, gamePointsGroup } from "./components/Map";
 import { otherPlayers, updateOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
 import "./style.css";
@@ -79,9 +79,16 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+function animateCoins() {
+    gamePointsGroup.children.forEach(coin => {
+        coin.rotation.z += 0.01;
+    });
+}
+
 function animate() {
   //animateVehicles();
   animatePlayer();
+  animateCoins();
   //hitTest();
 
   renderer.render(scene, camera);
