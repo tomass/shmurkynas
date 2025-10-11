@@ -11,7 +11,8 @@ export function Coin(x, y, colour) {
             flatShading: true,
         })
     );
-    point.position.z = 21;
+    point.castShadow = true;
+    point.position.z = 23;
     point.position.x = x * tileSize;
     point.position.y = y * tileSize;
 
