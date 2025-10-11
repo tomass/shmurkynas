@@ -8,6 +8,7 @@ import { ActivePoint } from "./ActivePoint";
 import { Coin } from "./Coin.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition";
 import { initializePlayer } from "./Player";
+import { updateAllOtherPlayers } from "../otherPlayers.js";
 
 let maps = {};
 export let mapData = [];
@@ -114,6 +115,7 @@ export function switchToMap(mapName, initializePathfinding) {
       initialiseMap(mapName);
       initializePlayer(newPosition.x, logicalY);
       initializePathfinding(); // Re-initialize pathfinding with the new map
+      updateAllOtherPlayers(); // Update visibility of other players on the new map
     } else {
       console.error(`No walkable position found on map: ${mapName}`);
     }

@@ -4,40 +4,65 @@ import { tileSize } from "./constants";
 import { currentMapName } from "./components/Map.js";
 
 export const otherPlayers = new THREE.Group();
-const otherPlayersMap = new Map();
+const otherPlayersMap = new Map(); // Will store { playerInfo: {}, mesh: THREE.Mesh | undefined }
 
 export function removeOtherPlayer(playerId) {
-    const playerMesh = otherPlayersMap.get(playerId);
-    if (playerMesh) {
-        otherPlayers.remove(playerMesh);
+    const playerRecord = otherPlayersMap.get(playerId);
+    if (playerRecord) {
+        if (playerRecord.mesh) {
+            otherPlayers.remove(playerRecord.mesh);
+        }
         otherPlayersMap.delete(playerId);
     }
 }
 
 export function updateOtherPlayer(playerInfo) {
     const { id, x, y, colour, map } = playerInfo;
-    const playerMesh = otherPlayersMap.get(id);
 
-    if (map !== currentMapName) {
-        if (playerMesh) {
-            removeOtherPlayer(id);
-        }
-        return;
+    let playerRecord = otherPlayersMap.get(id);
+
+    // If player is new, create a record
+    if (!playerRecord) {
+        playerRecord = { playerInfo: {}, mesh: undefined };
+        otherPlayersMap.set(id, playerRecord);
     }
 
-    if (playerMesh) {
-        if (x !== undefined && y !== undefined) {
-            playerMesh.position.x = x * tileSize;
-            playerMesh.position.y = y * tileSize;
-        }
-        if (colour) {
-            playerMesh.children[0].children[0].material.color.set(colour);
+    // Always update player info
+    playerRecord.playerInfo = playerInfo;
+
+    const isOnSameMap = (map === currentMapName);
+
+    if (isOnSameMap) {
+        // Player is on the same map
+        if (playerRecord.mesh) {
+            // Mesh exists, update it
+            if (x !== undefined && y !== undefined) {
+                playerRecord.mesh.position.x = x * tileSize;
+                playerRecord.mesh.position.y = y * tileSize;
+            }
+            if (colour) {
+                playerRecord.mesh.children[0].children[0].material.color.set(colour);
+            }
+        } else {
+            // Mesh doesn't exist, create it
+            const newMesh = createPlayerMesh(colour || "blue");
+            newMesh.position.x = x * tileSize;
+            newMesh.position.y = y * tileSize;
+            otherPlayers.add(newMesh);
+            playerRecord.mesh = newMesh;
         }
     } else {
-        const playerMesh = createPlayerMesh(colour || "blue");
-        playerMesh.position.x = x * tileSize;
-        playerMesh.position.y = y * tileSize;
-        otherPlayers.add(playerMesh);
-        otherPlayersMap.set(id, playerMesh);
+        // Player is on a different map
+        if (playerRecord.mesh) {
+            // If a mesh exists, remove it
+            otherPlayers.remove(playerRecord.mesh);
+            playerRecord.mesh = undefined;
+        }
     }
+}
+
+export function updateAllOtherPlayers() {
+    otherPlayersMap.forEach((playerRecord) => {
+        updateOtherPlayer(playerRecord.playerInfo);
+    });
 }
