@@ -36,6 +36,11 @@ export function collectUserInput(camera, handleZoom) {
     let isPinching = false;
 
     window.addEventListener('touchstart', event => {
+        const settingsDialog = document.getElementById('settings-dialog');
+        // If the touch is inside the settings dialog, do NOT prevent default
+        if (settingsDialog && settingsDialog.style.display === 'block' && settingsDialog.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
         if (event.touches.length === 2) {
             isPinching = true;
             initialTouchDistance = getTouchDistance(event.touches);
@@ -44,6 +49,11 @@ export function collectUserInput(camera, handleZoom) {
     }, { passive: false });
 
     window.addEventListener('touchmove', event => {
+        const settingsDialog = document.getElementById('settings-dialog');
+        // If the touch is inside the settings dialog, do NOT prevent default
+        if (settingsDialog && settingsDialog.style.display === 'block' && settingsDialog.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
         if (isPinching && event.touches.length === 2) {
             const currentTouchDistance = getTouchDistance(event.touches);
             const zoomFactor = currentTouchDistance / initialTouchDistance;
