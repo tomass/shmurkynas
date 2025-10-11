@@ -3,7 +3,7 @@ import { movesQueue, stepCompleted } from "./components/Player";
 import { player, playerData } from "./components/Player";
 import { tileSize } from "./constants";
 import { sendPosition, sendMessage } from "./websocket";
-import { gamePoints } from "./components/Map";
+import { gamePoints, currentMapName } from "./components/Map";
 
 const moveClock = new THREE.Clock(false);
 
@@ -23,9 +23,9 @@ export function animatePlayer() {
     stepCompleted();
     sendPosition(playerData.x, playerData.y);
 
-    const coin = gamePoints.find(p => p.type === 'coin' && p.x === playerData.x && p.y === playerData.y);
+    const coin = gamePoints.find(p => p.type === 'coin' && p.x === playerData.x && p.y === playerData.y && p.map === currentMapName);
     if (coin) {
-      sendMessage({ type: 'coinCollected', x: coin.x, y: coin.y });
+      sendMessage({ type: 'coinCollected', x: coin.x, y: coin.y, map: currentMapName });
     }
 
     moveClock.stop();

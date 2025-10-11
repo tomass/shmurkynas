@@ -3,7 +3,7 @@ import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
 import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
-import { map, initialiseMap, initialiseMapData } from "./components/Map";
+import { map, initialiseMap, initialiseMapData, switchToMap } from "./components/Map";
 import { otherPlayers, addOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
 import "./style.css";
@@ -12,7 +12,7 @@ import { animatePlayer } from "./animatePlayer";
 import { hitTest } from "./utilies/hitTest";
 import { initializePathfinding } from "./utilies/findPath";
 import { parseMapData } from "../shared/mapParser.js";
-import { connect } from "./websocket.js";
+import { connect, sendMessage } from "./websocket.js";
 import "./settings.js";
 
 const scene = new THREE.Scene();

@@ -5,20 +5,25 @@ export function parseMapData(text) {
   for (const section of mapSections) {
     const nameEnd = section.indexOf(']');
     const mapName = section.substring(0, nameEnd);
-    const tilesStart = section.indexOf('[tiles]');
-    const pointsStart = section.indexOf('[points]');
+    const content = section.substring(nameEnd + 1);
+
+    const typeMatch = content.match(/type=(public|private)/);
+    const mapType = typeMatch ? typeMatch[1] : 'public';
+
+    const tilesStart = content.indexOf('[tiles]');
+    const pointsStart = content.indexOf('[points]');
 
     let tilesData;
     if (pointsStart !== -1) {
-      tilesData = section.substring(tilesStart + "[tiles]".length, pointsStart).trim();
+      tilesData = content.substring(tilesStart + "[tiles]".length, pointsStart).trim();
     } else {
-      tilesData = section.substring(tilesStart + "[tiles]".length).trim();
+      tilesData = content.substring(tilesStart + "[tiles]".length).trim();
     }
     const tileArray = tilesData.split('\n').map(line => line.split(''));
 
     const points = [];
     if (pointsStart !== -1) {
-      const pointsData = section.substring(pointsStart + "[points]".length).trim();
+      const pointsData = content.substring(pointsStart + "[points]".length).trim();
       if (pointsData) {
         const pointEntries = pointsData.split(/(transfer:|living:)/).slice(1);
 
@@ -44,6 +49,7 @@ export function parseMapData(text) {
     }
 
     maps[mapName] = {
+      type: mapType,
       tiles: tileArray,
       points: points
     };
