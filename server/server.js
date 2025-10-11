@@ -182,9 +182,11 @@ wss.on('connection', async ws => {
           if (!playerState.hasOwnProperty('colour')) {
             playerState.colour = 'white';
           }
+          if (!playerState.hasOwnProperty('map')) {
+            playerState.map = 'base';
+          }
           playerState.ws = ws;
           playerState.status = 'active';
-          playerState.map = 'base';
           playerState.lastAction = dateNow();
           debouncedSave();
         } else {
@@ -211,6 +213,7 @@ wss.on('connection', async ws => {
         id,
         x: playerState.x,
         y: playerState.y,
+        map: playerState.map,
         name: playerState.name,
         money: playerState.money,
         colour: playerState.colour,
@@ -233,6 +236,7 @@ wss.on('connection', async ws => {
         id,
         x,
         y,
+        map: playerState.map,
         name: playerState.name,
         money: playerState.money,
         colour: playerState.colour,
@@ -241,19 +245,20 @@ wss.on('connection', async ws => {
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
-      newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, colour: playerState.colour } });
+      newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, map: playerState.map, colour: playerState.colour } });
 
     } else if (message.type === 'move') {
       const player = players.get(id);
       if (player) {
         player.x = message.x;
         player.y = message.y;
+        player.map = message.map;
         player.status = 'active';
         player.lastAction = dateNow();
         debouncedSave();
 
         // Broadcast the move to all other clients
-        const moveMessage = JSON.stringify({ type: 'playerMoved', id, x: message.x, y: message.y, colour: player.colour });
+        const moveMessage = JSON.stringify({ type: 'playerMoved', id, x: message.x, y: message.y, map: message.map, colour: player.colour });
         broadcastToOthers(id, moveMessage);
       }
     } else if (message.type === 'ping') {
@@ -276,6 +281,7 @@ wss.on('connection', async ws => {
         broadcastToOthers(id, updateMessage);
       }
     } else if (message.type === 'mapTransfer') {
+      // TODO: Thiw should not be required, as map is sent in 'move' message
       const player = players.get(id);
       if (player) {
         player.map = message.map;

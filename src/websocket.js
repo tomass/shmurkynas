@@ -1,5 +1,5 @@
 import { addOtherPlayer, removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
-import { setGamePoints } from './components/Map.js';
+import { setGamePoints, currentMapName } from './components/Map.js';
 import { updatePlayerMoney } from './components/Player.js';
 
 let socket;
@@ -94,7 +94,8 @@ export function sendPosition(x, y) {
     const message = {
       type: 'move',
       x: x,
-      y: y
+      y: y,
+      map: currentMapName
     };
     socket.send(JSON.stringify(message));
     localStorage.setItem('lastPosition', JSON.stringify({ x, y }));
