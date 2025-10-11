@@ -357,36 +357,33 @@ function spawnCoin() {
         return;
     }
 
-    const publicMaps = Object.entries(maps).filter(([, mapData]) => mapData.type === 'public');
-    if (publicMaps.length === 0) {
-        logWithTimestamp("No public maps found to spawn a coin.");
-        return;
-    }
-
-    const [mapName, mapData] = publicMaps[Math.floor(Math.random() * publicMaps.length)];
-    const mapTiles = mapData.tiles;
-
     const grassTiles = [];
-    for (let y = 0; y < mapTiles.length; y++) {
-        for (let x = 0; x < mapTiles[y].length; x++) {
+    for (const [mapName, map] of Object.entries(maps)) {
+      if (map.type === 'public') {
+        const mapTiles = map.tiles;
+        for (let y = 0; y < mapTiles.length; y++) {
+          for (let x = 0; x < mapTiles[y].length; x++) {
             if (mapTiles[y][x] === 'Ž') {
-                grassTiles.push({ x, y });
+                // TODO: we should also check if there is no existing coin in that place
+                grassTiles.push({ x, y, mapName, tileLength: mapTiles.length });
             }
+          }
         }
+      }
     }
 
     if (grassTiles.length === 0) {
-        logWithTimestamp(`No grass tiles found on map '${mapName}' to spawn a coin.`);
+        logWithTimestamp(`No grass tiles found on all maps to spawn a coin.`);
         return;
     }
 
     const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
-    const logicalY = mapTiles.length - 1 - randomTile.y;
+    const logicalY = randomTile.tileLength - 1 - randomTile.y;
 
-    const newCoin = { type: 'coin', x: randomTile.x, y: logicalY, map: mapName };
+    const newCoin = { type: 'coin', x: randomTile.x, y: logicalY, map: randomTile.mapName };
     gamePoints.push(newCoin);
     debouncedGamePointsSave();
-    logWithTimestamp(`New coin spawned at (${newCoin.x}, ${newCoin.y})`);
+    logWithTimestamp(`New coin spawned at (${newCoin.map}, ${newCoin.x}, ${newCoin.y})`);
 
     const message = JSON.stringify({ type: 'newCoin', gamePoints });
     broadcastToAll(message);
