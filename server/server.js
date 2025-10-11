@@ -62,6 +62,7 @@ async function savePlayers() {
     id: p.id,
     x: p.x,
     y: p.y,
+    map: p.map,
     name: p.name,
     money: p.money,
     education: p.education,
@@ -164,7 +165,7 @@ wss.on('connection', async ws => {
     // Get current players before adding the new one
     let allPlayers = Array.from(players.values())
       .filter(p => p.status === 'active') // only active players
-      .map(p => ({ id: p.id, x: p.x, y: p.y }));
+      .map(p => ({ id: p.id, x: p.x, y: p.y, map: p.map, colour: p.colour }));
     let newPlayerMessage;
     if (message.type === 'resume') {
       let playerState;
@@ -221,7 +222,7 @@ wss.on('connection', async ws => {
         gamePoints,
         lastAction: dateNow()
       }));
-      newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, colour: playerState.colour } });
+      newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, map: playerState.map, colour: playerState.colour } });
 
     } else if (message.type === 'create') {
       id = uuidv4();
