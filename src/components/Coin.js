@@ -3,13 +3,15 @@ import { tileSize } from "../constants";
 
 export function Coin(x, y, colour) {
     const point = new THREE.Mesh(
-        new THREE.CapsuleGeometry(10, 10, 4, 6),
+        new THREE.CylinderGeometry(21, 21, 1, 17),
         new THREE.MeshLambertMaterial({
-            color: colour,
+            color: new THREE.Color("#f6d32d"),
+            roughness: 0.5,
+            metalness: 0.1,
             flatShading: true,
         })
     );
-    point.position.z = 10;
+    point.position.z = 21;
     point.position.x = x * tileSize;
     point.position.y = y * tileSize;
 
