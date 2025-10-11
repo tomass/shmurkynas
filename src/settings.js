@@ -27,11 +27,13 @@ function initializeSettings() {
       settingsButton.addEventListener('touchend', openSettings);
       settingsButton.addEventListener('click', openSettings);
 
-      closeButton.addEventListener('click', () => {
+      const closeSettings = (event) => {
+        event.preventDefault();
         settingsDialog.style.display = 'none';
-      });
+      };
 
-      saveButton.addEventListener('click', () => {
+      const saveSettings = (event) => {
+        event.preventDefault();
         const newName = nameInput.value;
         const newColour = colourInput.value;
         sendSettings(newName, newColour);
@@ -43,7 +45,13 @@ function initializeSettings() {
         playerColourDiv.style.backgroundColor = newColour;
 
         settingsDialog.style.display = 'none';
-      });
+      };
+
+      closeButton.addEventListener('click', closeSettings);
+      closeButton.addEventListener('touchend', closeSettings);
+
+      saveButton.addEventListener('click', saveSettings);
+      saveButton.addEventListener('touchend', saveSettings);
     });
 }
 
