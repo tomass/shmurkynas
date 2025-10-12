@@ -9,7 +9,7 @@ export function Renderer() {
         antialias: true,
         canvas: canvas,
     });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(1 /*window.devicePixelRatio*/);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
 
