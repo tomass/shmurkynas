@@ -62,9 +62,9 @@ const gameInitPromise = new Promise(resolve => {
 connect();
 
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
-  const { x, y, name, money, colour, players } = initData;
+  const { x, y, map, name, money, colour, players } = initData;
   initializePlayer(x, y, name, money, colour);
-  initialiseMap();
+  initialiseMap(map);
   players.forEach(playerInfo => {
     updateOtherPlayer(playerInfo);
   });
