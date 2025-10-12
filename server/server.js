@@ -1,4 +1,4 @@
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import { parseMapData } from '../shared/mapParser.js';
@@ -103,6 +103,12 @@ async function loadPlayers() {
 
     // Recreate player entries (without WebSocket connections)
     playersData.forEach(player => {
+      // Validate and set default for 'money'
+      if (typeof player.money !== 'number' || isNaN(player.money)) {
+        logWithTimestamp(`Warning: Invalid or missing 'money' for player ${player.id}. Resetting to 0.`);
+        player.money = 0;
+      }
+
       players.set(player.id, {
         ...player,
         ws: null, // We'll set this when players reconnect
@@ -133,7 +139,7 @@ async function loadGamePoints() {
 
 function broadcastToAll(message) {
     for (const player of players.values()) {
-        if (player.status === 'active' && player.ws?.readyState === player.ws.OPEN) {
+        if (player.status === 'active' && player.ws && player.ws.readyState === WebSocket.OPEN) {
             player.ws.send(message);
         }
     }
@@ -143,7 +149,7 @@ function broadcastToOthers(senderId, message) {
   for (const [playerId, player] of players.entries()) {
     if (playerId !== senderId &&
         player.status === 'active' &&
-        player.ws?.readyState === player.ws.OPEN) {
+        player.ws && player.ws.readyState === WebSocket.OPEN) {
       player.ws.send(message);
     }
   }
@@ -191,7 +197,7 @@ wss.on('connection', async ws => {
           playerState.lastAction = dateNow();
           debouncedSave();
         } else {
-          logWithTimestamp('Could not find record for player with ${id}');
+          logWithTimestamp(`Could not find record for player with ${id}`);
           playerState = {
             id,
             ws,
