@@ -70,7 +70,7 @@ export function stepCompleted() {
     if (direction === "right")    playerData.x += 1;
 }
 
-export function initializePlayer(x, y, name, money, colour) {
+export function initializePlayer(x, y, name = playerData.name, money = playerData.money, colour = playerData.colour) {
   playerData.x = x;
   playerData.y = y;
   playerData.name = name;
@@ -102,7 +102,7 @@ export function updatePlayerMoney(money) {
   playerData.money = money;
   const playerMoneyEl = document.getElementById('playerMoney');
   if (playerMoneyEl) {
-    playerMoneyEl.textContent = `$${money}`;
+    playerMoneyEl.textContent = `€${money}`;
   }
 }
 
