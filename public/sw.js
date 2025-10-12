@@ -3,10 +3,7 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/shmurkynas.svg',
-  '/settings.html',
-  '/base.map',
-  '/base_ula.map'
+  '/shmurkynas.svg'
 ];
 
 self.addEventListener('install', event => {
