@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "parts": [
+    {
+      "id": "part-0",
+      "type": "BoxGeometry",
+      "position": {
+        "x": 0,
+        "y": 13,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#b5835a",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "width": 10,
+        "height": 3.4,
+        "depth": 10
+      }
+    },
+    {
+      "id": "part-1",
+      "type": "BoxGeometry",
+      "position": {
+        "x": 0,
+        "y": 15,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#ffffff",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "width": 10,
+        "height": 1,
+        "depth": 10
+      }
+    },
+    {
+      "id": "part-2",
+      "type": "BoxGeometry",
+      "position": {
+        "x": -5,
+        "y": 19,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 2,
+        "z": -1
+      },
+      "color": "#b5835a",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "width": 0.4,
+        "height": 14.2,
+        "depth": 10
+      }
+    },
+    {
+      "id": "part-6",
+      "type": "BoxGeometry",
+      "position": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#5a5a5a",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "width": 3.5,
+        "height": 12.9,
+        "depth": 6.7
+      }
+    }
+  ]
+}

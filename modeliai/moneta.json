@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "parts": [
+    {
+      "id": "part-0",
+      "type": "CylinderGeometry",
+      "position": {
+        "x": 0,
+        "y": 21,
+        "z": 0
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#f6d32d",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "radiusTop": 21,
+        "radiusBottom": 21,
+        "height": 1,
+        "radialSegments": 17
+      }
+    }
+  ]
+}

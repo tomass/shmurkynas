@@ -6,6 +6,8 @@ import { Building } from "./Building";
 import { Water } from "./Water";
 import { ActivePoint } from "./ActivePoint";
 import { Coin } from "./Coin.js";
+import { Floor } from "./Floor";
+import { Chair } from "./Chair";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition";
 import { initializePlayer } from "./Player";
 import { updateAllOtherPlayers } from "../otherPlayers.js";
@@ -84,6 +86,14 @@ function addTile(x, y, type) {
   } else if (type === "V") {
     const water = Water(x, y);
     map.add(water);
+  } else if (type === "R") {
+    const floor = Floor(x, y);
+    map.add(floor);
+  } else if (type === "K") {
+    const floor = Floor(x, y);
+    map.add(floor);
+    const chair = Chair(x, y);
+    map.add(chair);
   } else /*(type === "Ž")*/ {
     const grass = Grass(x, y);
     map.add(grass);

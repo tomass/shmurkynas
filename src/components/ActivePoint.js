@@ -14,10 +14,11 @@ export function ActivePoint(x, y, colour) {
         // Put lightbulb higher above the building
         point.position.z = 50;
     } else {
-        point.position.z = 5;
+        point.position.z = 15;
     }
     point.position.x = x * tileSize;
     point.position.y = y * tileSize;
+    point.castShadow = true;
 
     return point;
 }

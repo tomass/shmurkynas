@@ -3,7 +3,7 @@ import { mapData } from "../components/Map";
 
 const easystar = new easystarjs.js();
 
-const walkableTiles = ["G", "Ž"];
+const walkableTiles = ["G", "Ž", "R"];
 
 export function initializePathfinding() {
   easystar.setGrid(mapData);

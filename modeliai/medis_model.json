@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "parts": [
+    {
+      "id": "part-0",
+      "type": "BoxGeometry",
+      "position": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#865e3c",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "width": 10,
+        "height": 10,
+        "depth": 10
+      }
+    },
+    {
+      "id": "part-1",
+      "type": "BoxGeometry",
+      "position": {
+        "x": 0,
+        "y": 20,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#2ec27e",
+      "material": "MeshStandardMaterial",
+      "parameters": {
+        "width": 20,
+        "height": 20,
+        "depth": 20
+      }
+    }
+  ]
+}
