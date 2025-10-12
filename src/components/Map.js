@@ -101,10 +101,19 @@ function addTile(x, y, type) {
   }
 }
 
-export function switchToMap(mapName, initializePathfinding) {
+export function switchToMap(mapName, initializePathfinding, map_x, map_y) {
   if (maps[mapName]) {
     const newMapData = maps[mapName].tiles;
-    const newPosition = findFirstWalkablePosition(newMapData);
+    let newPosition;
+    console.log('switching to map:', mapName, map_x, map_y);
+    if (map_x === undefined || map_y === undefined) {
+      // This should not be happening if map data is captured correctly and
+      // all transfer points have map and position defined.
+      console.log('No map_x or map_y provided, finding first walkable position.');
+      newPosition = findFirstWalkablePosition(newMapData);
+    } else {
+      newPosition = { x: map_x, y: map_y };
+    }
 
     if (newPosition) {
       // The y-coordinate needs to be inverted because the findFirstWalkablePosition

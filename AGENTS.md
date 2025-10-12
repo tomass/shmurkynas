@@ -69,6 +69,12 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   | Water    | `V`            |                        |
 
 - **Coordinates**: `(x, y)` = tile grid position; `(x, 0, z)` in Three.js space.
+- In map file tiles are stored with 0,0 on the top as this is more natural to human,
+  who is draing a map.
+- When map tiles are loaded into the game, y axis is reversed, making 0,0 at bottom, so
+  when loading we have to change game_y = map file height - 1 - map_file_y.
+- Path finder (easy star js) is using whatever coordinates are fed to him, in our
+  case it is game coordinates, that is with 0,0 at the bottom left.
 
 ### **Setup file example**
 - Setup file consists of multiple maps, all of which have such components:
