@@ -2,21 +2,26 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import { parseMapData } from '../shared/mapParser.js';
-import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval } from '../src/constants.js';
+import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval } from '../src/constants.js';
+import { findTile } from '../src/utilies/findTile.js';
+import { initialiseMapData } from '../src/components/Map.js';
 
 const wss = new WebSocketServer({ port: 8088 });
 const PLAYERS_FILE = './players.json';
 const GAMEPOINTS_FILE = './gamePoints.json';
+const ADVENTURES_FILE = './adventures.json';
 
 const players = new Map();
 let gamePoints = [];
 let maps = {};
+let adventures = [];
 
 // Load map data on server startup
 async function loadMapData() {
     try {
         const mapText = await fs.readFile('./public/base.map', 'utf8');
         maps = parseMapData(mapText);
+        initialiseMapData(maps);
         logWithTimestamp('Map data loaded successfully.');
     } catch (error) {
         logWithTimestamp('Error loading map data:', error);
@@ -37,7 +42,7 @@ function dateNow() {
   return formattedLocalTime;
 }
 
-function logWithTimestamp(...args) {
+export function logWithTimestamp(...args) {
   console.log(dateNow(), ...args);
 }
 
@@ -83,6 +88,11 @@ async function saveGamePoints() {
   await fs.writeFile(GAMEPOINTS_FILE, JSON.stringify(gamePoints, null, 2));
 }
 
+// Save all adventures to file
+async function saveAdventures() {
+  await fs.writeFile(ADVENTURES_FILE, JSON.stringify(adventures, null, 2));
+}
+
 let saveDebounce;
 function debouncedSave() {
   clearTimeout(saveDebounce);
@@ -93,6 +103,12 @@ let saveGamePointsDebounce;
 function debouncedGamePointsSave() {
   clearTimeout(saveGamePointsDebounce);
   saveGamePointsDebounce = setTimeout(saveGamePoints, 10000); // Save every 1s max
+}
+
+let saveAdventuresDebounce;
+function debouncedAdventuresSave() {
+  clearTimeout(saveAdventuresDebounce);
+  saveAdventuresDebounce = setTimeout(saveAdventures, 10000); // Save every 1s max
 }
 
 // Load players from file on startup
@@ -137,6 +153,19 @@ async function loadGamePoints() {
   }
 }
 
+// Load game points from file on startup
+async function loadAdventures() {
+  try {
+    const data = await fs.readFile(ADVENTURES_FILE, 'utf8');
+    adventures = JSON.parse(data);
+    logWithTimestamp(`Loaded ${adventures.length} adventures from file`);
+  } catch (err) {
+    if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+      logWithTimestamp('Error loading adventures:', err);
+    }
+  }
+}
+
 function broadcastToAll(message) {
     for (const player of players.values()) {
         if (player.status === 'active' && player.ws && player.ws.readyState === WebSocket.OPEN) {
@@ -157,7 +186,7 @@ function broadcastToOthers(senderId, message) {
 
 // Load initial data
 (async () => {
-    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints()]);
+    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints(), loadAdventures()]);
 })();
 
 wss.on('connection', async ws => {
@@ -375,6 +404,7 @@ function spawnCoin() {
         return;
     }
 
+    // TODO: replace this with new findTile function
     const grassTiles = [];
     for (const [mapName, map] of Object.entries(maps)) {
       if (map.type === 'public') {
@@ -407,4 +437,32 @@ function spawnCoin() {
     broadcastToAll(message);
 }
 
+function spawnAdventure() {
+  if (adventures.length == 0) {
+    const newAdventure = {
+      type: 'treasure1',
+      createDate: dateNow() };
+    const treasure = findTile(['Ž', 'R']);
+    newAdventure.x = treasure.x;
+    newAdventure.y = treasure.y;
+    newAdventure.map = treasure.mapName;
+    logWithTimestamp(`New ${newAdventure.type} spawned at ${newAdventure.map}, ${newAdventure.x}, ${newAdventure.y}`);
+    newAdventure.maps = [];
+    for (let i = 0; i < 1; i++) {
+      const treasureMap = findTile(['Ž', 'R']);
+      const map_x = treasureMap.x;
+      const map_y = treasureMap.y;
+      const map_map = treasureMap.mapName;
+      newAdventure.maps.push({ map: map_map, x: map_x, y: map_y });
+      logWithTimestamp(`   with map at ${map_map}, ${map_x}, ${map_y}`);
+    }
+    adventures.push(newAdventure);
+    debouncedAdventuresSave();
+    const message = JSON.stringify({ type: 'newAdventure', adventure: { type: newAdventure.type } });
+    broadcastToAll(message);
+  }
+}
+
 setInterval(spawnCoin, coinAppearanceInterval);
+setInterval(spawnAdventure, adventureAppearanceInterval);
+

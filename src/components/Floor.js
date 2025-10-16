@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { tileSize } from "../constants";
+import { tileSize } from "../constants.js";
 
 export function Floor(x, y) {
     const floor = new THREE.Group();

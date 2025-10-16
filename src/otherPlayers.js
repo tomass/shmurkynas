@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { createPlayerMesh } from "./components/Player";
-import { tileSize } from "./constants";
+import { createPlayerMesh } from "./components/Player.js";
+import { tileSize } from "./constants.js";
 import { currentMapName } from "./components/Map.js";
 
 export const otherPlayers = new THREE.Group();

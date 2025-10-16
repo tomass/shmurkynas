@@ -1,5 +1,5 @@
-import { calculateFinalPosition } from "./calculateFinalPosition";
-import { mapData } from "../components/Map";
+import { calculateFinalPosition } from "./calculateFinalPosition.js";
+import { mapData } from "../components/Map.js";
 
 export function endsUpInValidPosition(currentPosition, moves) {
   const finalPosition = calculateFinalPosition(currentPosition, moves);

@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { tileSize } from "../constants";
-import { mapData } from "../components/Map";
+import { tileSize } from "../constants.js";
+import { mapData } from "../components/Map.js";
 
 export function Road(x, y) {
     const road = new THREE.Group();

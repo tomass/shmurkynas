@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { endsUpInValidPosition } from "../utilies/endsUpInValidPosition";
-import { tileSize } from "../constants";
+import { endsUpInValidPosition } from "../utilies/endsUpInValidPosition.js";
+import { tileSize } from "../constants.js";
 
 export function createPlayerMesh(color = "white") {
     const player = new THREE.Group();

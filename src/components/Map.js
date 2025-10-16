@@ -1,18 +1,18 @@
 import * as THREE from "three";
-import { Grass } from "./Grass";
-import { Road } from "./Road";
-import { Tree } from "./Tree";
-import { Building } from "./Building";
-import { Water } from "./Water";
-import { ActivePoint } from "./ActivePoint";
+import { Grass } from "./Grass.js";
+import { Road } from "./Road.js";
+import { Tree } from "./Tree.js";
+import { Building } from "./Building.js";
+import { Water } from "./Water.js";
+import { ActivePoint } from "./ActivePoint.js";
 import { Coin } from "./Coin.js";
-import { Floor } from "./Floor";
-import { Chair } from "./Chair";
-import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition";
-import { initializePlayer } from "./Player";
+import { Floor } from "./Floor.js";
+import { Chair } from "./Chair.js";
+import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition.js";
+import { initializePlayer } from "./Player.js";
 import { updateAllOtherPlayers } from "../otherPlayers.js";
 
-let maps = {};
+export let maps = {}; // TODO: We want to transform this right after loading to avoid recalculating Y inversion all the time.
 export let mapData = [];
 export let currentPoints = [];
 export let gamePoints = [];

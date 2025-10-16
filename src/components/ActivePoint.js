@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { tileSize } from "../constants";
-import { mapData } from "./Map";
+import { tileSize } from "../constants.js";
+import { mapData } from "./Map.js";
 
 export function ActivePoint(x, y, colour) {
     const point = new THREE.Mesh(
