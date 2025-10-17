@@ -1,7 +1,5 @@
-const CACHE_NAME = 'shmurkynas-cache-v1';
+const CACHE_NAME = 'shmurkynas-cache-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/shmurkynas.svg'
 ];

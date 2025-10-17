@@ -59,7 +59,9 @@ const gameInitPromise = new Promise(resolve => {
   }, { once: true });
 });
 
-connect();
+window.addEventListener('DOMContentLoaded', () => {
+  connect();
+});
 
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
   const { x, y, map, name, money, colour, players } = initData;
@@ -93,3 +95,50 @@ function animate() {
 
   renderer.render(scene, camera);
 }
+
+const showMapsButton = document.getElementById('show-maps-button');
+const mapViewer = document.getElementById('map-viewer');
+const mapImageContainer = document.getElementById('map-image-container');
+const closeMapViewerButton = document.getElementById('close-map-viewer-button');
+const prevMapButton = document.getElementById('prev-map-button');
+const nextMapButton = document.getElementById('next-map-button');
+
+let collectedMapImages = [];
+let currentMapIndex = 0;
+
+function updateMapViewer() {
+  if (collectedMapImages.length === 0) {
+    mapImageContainer.innerHTML = '';
+    return;
+  }
+  mapImageContainer.innerHTML = `<img src="${collectedMapImages[currentMapIndex]}" />`;
+  prevMapButton.style.display = collectedMapImages.length > 1 ? 'block' : 'none';
+  nextMapButton.style.display = collectedMapImages.length > 1 ? 'block' : 'none';
+}
+
+showMapsButton.addEventListener('click', () => {
+  collectedMapImages = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('treasureMap_')) {
+      collectedMapImages.push(localStorage.getItem(key));
+    }
+  }
+  currentMapIndex = 0;
+  updateMapViewer();
+  mapViewer.style.display = 'block';
+});
+
+closeMapViewerButton.addEventListener('click', () => {
+  mapViewer.style.display = 'none';
+});
+
+prevMapButton.addEventListener('click', () => {
+  currentMapIndex = (currentMapIndex - 1 + collectedMapImages.length) % collectedMapImages.length;
+  updateMapViewer();
+});
+
+nextMapButton.addEventListener('click', () => {
+  currentMapIndex = (currentMapIndex + 1) % collectedMapImages.length;
+  updateMapViewer();
+});

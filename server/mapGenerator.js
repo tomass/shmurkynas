@@ -1,10 +1,11 @@
 import { createCanvas, loadImage } from 'canvas';
 import fs from 'fs';
 
-async function generateMapImage(mapData, x, y, outputPath) {
+async function generateMapImage(mapData, x, y) {
   const tileSize = 24;
-  const width = 7 * tileSize;
-  const height = 7 * tileSize;
+  const distance = 5; // Number of tiles from center to edge
+  const width = (distance * 2 + 1) * tileSize;
+  const height = (distance * 2 + 1) * tileSize;
 
   const canvas = createCanvas(width, height);
   const context = canvas.getContext('2d');
@@ -22,13 +23,13 @@ async function generateMapImage(mapData, x, y, outputPath) {
   }
 
   // 2. Draw map tiles
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
+  for (let row = 0; row < (distance * 2 + 2); row++) {
+    for (let col = 0; col < (distance * 2 + 2); col++) {
       const tileX = col * tileSize;
       const tileY = row * tileSize;
 
-      const mapX = x - 3 + col;;
-      const mapY = y - 3 + row;
+      const mapX = x - distance + col;
+      const mapY = y - distance + row;
 
       // Check bounds
       if (mapX < 0 || mapY < 0 || mapY >= mapData.length || mapX >= mapData[0].length) {
@@ -74,8 +75,8 @@ async function generateMapImage(mapData, x, y, outputPath) {
     context.strokeRect(0, 0, width, height);
 
   // 4. Draw a large red 'X' at the treasure location
-  const treasureX = 3 * tileSize + tileSize / 2;
-  const treasureY = 3 * tileSize + tileSize / 2;
+  const treasureX = distance * tileSize + tileSize / 2;
+  const treasureY = distance * tileSize + tileSize / 2;
   context.strokeStyle = '#D42D2D';
   context.lineWidth = 5;
   context.beginPath();
@@ -85,10 +86,7 @@ async function generateMapImage(mapData, x, y, outputPath) {
   context.lineTo(treasureX - tileSize / 4, treasureY + tileSize / 4);
   context.stroke();
 
-  // Save the canvas to a file
-  const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`Treasure map image saved to ${outputPath}`);
+  return canvas.toDataURL('image/png');
 }
 
 export { generateMapImage };
