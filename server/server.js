@@ -463,12 +463,12 @@ async function spawnAdventure() {
   if (mapData) {
       const mapHeight = mapData.tiles.length;
       const drawingY = mapHeight - 1 - newAdventure.y;
-      try {
+      /*try {
           await generateMapImage(mapData.tiles, newAdventure.x, drawingY, './map.png');
           logWithTimestamp(`Successfully generated treasure map image.`);
       } catch (error) {
           logWithTimestamp('Error generating treasure map image:', error);
-      }
+      }*/
   } else {
       logWithTimestamp(`Error: Map "${newAdventure.map}" not found for image generation.`);
   }

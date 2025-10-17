@@ -3,8 +3,8 @@ import fs from 'fs';
 
 async function generateMapImage(mapData, x, y, outputPath) {
   const tileSize = 24;
-  const width = mapData[0].length * tileSize;
-  const height = mapData.length * tileSize;
+  const width = 7 * tileSize;
+  const height = 7 * tileSize;
 
   const canvas = createCanvas(width, height);
   const context = canvas.getContext('2d');
@@ -22,12 +22,19 @@ async function generateMapImage(mapData, x, y, outputPath) {
   }
 
   // 2. Draw map tiles
-  for (let row = 0; row < mapData.length; row++) {
-    for (let col = 0; col < mapData[row].length; col++) {
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
       const tileX = col * tileSize;
       const tileY = row * tileSize;
 
-      switch (mapData[row][col]) {
+      const mapX = x - 3 + col;;
+      const mapY = y - 3 + row;
+
+      // Check bounds
+      if (mapX < 0 || mapY < 0 || mapY >= mapData.length || mapX >= mapData[0].length) {
+        continue; // Out of bounds, leave as parchment
+      }
+      switch (mapData[mapX][mapY]) {
         case 'P': // Building
           context.fillStyle = '#6E6E6E'; // Dark grey
           context.fillRect(tileX, tileY, tileSize, tileSize);
@@ -67,8 +74,8 @@ async function generateMapImage(mapData, x, y, outputPath) {
     context.strokeRect(0, 0, width, height);
 
   // 4. Draw a large red 'X' at the treasure location
-  const treasureX = x * tileSize + tileSize / 2;
-  const treasureY = y * tileSize + tileSize / 2;
+  const treasureX = 3 * tileSize + tileSize / 2;
+  const treasureY = 3 * tileSize + tileSize / 2;
   context.strokeStyle = '#D42D2D';
   context.lineWidth = 5;
   context.beginPath();
