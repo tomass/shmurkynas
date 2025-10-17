@@ -365,6 +365,12 @@ wss.on('connection', async ws => {
 
       // Notify all other players about the new player
       broadcastToOthers(id, newPlayerMessage);
+
+      if (adventures.length > 0) {
+        const adventure = adventures[0];
+        const message = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: adventure.maps } });
+        ws.send(message);
+      }
     }
   });
 
@@ -486,7 +492,7 @@ async function spawnAdventure() {
 
   adventures.push(newAdventure);
   debouncedAdventuresSave();
-  const message = JSON.stringify({ type: 'newAdventure', adventure: { type: newAdventure.type } });
+  const message = JSON.stringify({ type: 'newAdventure', adventure: { type: newAdventure.type, maps: newAdventure.maps } });
   broadcastToAll(message);
 }
 
