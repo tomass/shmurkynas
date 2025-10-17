@@ -1,6 +1,7 @@
 import { removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
-import { setGamePoints, currentMapName } from './components/Map.js';
+import { setGamePoints, currentMapName, map } from './components/Map.js';
 import { updatePlayerMoney } from './components/Player.js';
+import { TreasureMap } from './components/TreasureMap.js';
 
 let socket;
 let playerId = null;
@@ -77,6 +78,20 @@ export function connect() {
         break;
       case 'updateMoney':
         updatePlayerMoney(message.money);
+        break;
+      case 'newAdventure':
+        // Clear existing treasure maps
+        map.children.filter(c => c.name === 'treasureMap').forEach(c => map.remove(c));
+
+        if (message.adventure.maps) {
+          message.adventure.maps.forEach(mapLocation => {
+            if (mapLocation.map === currentMapName) {
+              const treasureMap = TreasureMap(mapLocation.x, mapLocation.y);
+              treasureMap.name = 'treasureMap';
+              map.add(treasureMap);
+            }
+          });
+        }
         break;
     }
   });
