@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import { parseMapData } from '../shared/mapParser.js';
+import { generateMapImage } from './mapGenerator.js';
 import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval } from '../src/constants.js';
 import { findTile } from '../src/utilies/findTile.js';
 import { initialiseMapData } from '../src/components/Map.js';
@@ -437,30 +438,56 @@ function spawnCoin() {
     broadcastToAll(message);
 }
 
-function spawnAdventure() {
-  if (adventures.length == 0) {
-    const newAdventure = {
-      type: 'treasure1',
-      createDate: dateNow() };
-    const treasure = findTile(['Ž', 'R']);
-    newAdventure.x = treasure.x;
-    newAdventure.y = treasure.y;
-    newAdventure.map = treasure.mapName;
-    logWithTimestamp(`New ${newAdventure.type} spawned at ${newAdventure.map}, ${newAdventure.x}, ${newAdventure.y}`);
-    newAdventure.maps = [];
-    for (let i = 0; i < 1; i++) {
-      const treasureMap = findTile(['Ž', 'R']);
-      const map_x = treasureMap.x;
-      const map_y = treasureMap.y;
-      const map_map = treasureMap.mapName;
-      newAdventure.maps.push({ map: map_map, x: map_x, y: map_y });
-      logWithTimestamp(`   with map at ${map_map}, ${map_x}, ${map_y}`);
-    }
-    adventures.push(newAdventure);
-    debouncedAdventuresSave();
-    const message = JSON.stringify({ type: 'newAdventure', adventure: { type: newAdventure.type } });
-    broadcastToAll(message);
+async function spawnAdventure() {
+  if (adventures.length > 0) {
+    return;
   }
+
+  const newAdventure = {
+    type: 'treasure1',
+    createDate: dateNow()
+  };
+
+  const treasureLocation = findTile(['Ž', 'R']);
+  if (!treasureLocation) {
+      logWithTimestamp('Could not find a suitable tile to spawn an adventure.');
+      return;
+  }
+  newAdventure.x = treasureLocation.x;
+  newAdventure.y = treasureLocation.y;
+  newAdventure.map = treasureLocation.mapName;
+
+  logWithTimestamp(`Spawning adventure: ${newAdventure.type} at ${newAdventure.map} (${newAdventure.x}, ${newAdventure.y})`);
+
+  const mapData = maps[newAdventure.map];
+  if (mapData) {
+      const mapHeight = mapData.tiles.length;
+      const drawingY = mapHeight - 1 - newAdventure.y;
+      /*try {
+          await generateMapImage(mapData.tiles, newAdventure.x, drawingY, './map.png');
+          logWithTimestamp(`Successfully generated treasure map image.`);
+      } catch (error) {
+          logWithTimestamp('Error generating treasure map image:', error);
+      }*/
+  } else {
+      logWithTimestamp(`Error: Map "${newAdventure.map}" not found for image generation.`);
+  }
+
+  newAdventure.maps = [];
+  for (let i = 0; i < 1; i++) {
+    const mapLocation = findTile(['Ž', 'R']);
+     if (!mapLocation) {
+        logWithTimestamp('Could not find a suitable tile to place the adventure map item.');
+        continue;
+    }
+    newAdventure.maps.push({ map: mapLocation.mapName, x: mapLocation.x, y: mapLocation.y });
+    logWithTimestamp(`   > Placing map item at ${mapLocation.mapName} (${mapLocation.x}, ${mapLocation.y})`);
+  }
+
+  adventures.push(newAdventure);
+  debouncedAdventuresSave();
+  const message = JSON.stringify({ type: 'newAdventure', adventure: { type: newAdventure.type } });
+  broadcastToAll(message);
 }
 
 const coinInterval = setInterval(spawnCoin, coinAppearanceInterval);
