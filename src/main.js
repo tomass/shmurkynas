@@ -59,15 +59,8 @@ const gameInitPromise = new Promise(resolve => {
   }, { once: true });
 });
 
-connect();
-
-window.addEventListener('load', () => {
-  for (let i = 0; i < localStorage.length; i++) {
-    if (localStorage.key(i).startsWith('treasureMap_')) {
-      document.getElementById('show-maps-button').style.display = 'block';
-      break;
-    }
-  }
+window.addEventListener('DOMContentLoaded', () => {
+  connect();
 });
 
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {

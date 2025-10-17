@@ -12,7 +12,7 @@ export function TreasureMap(x, y) {
         })
     );
     point.castShadow = true;
-    point.position.z = 23;
+    point.position.z = 30;
     point.position.x = x * tileSize;
     point.position.y = y * tileSize;
 
