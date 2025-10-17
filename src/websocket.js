@@ -93,6 +93,12 @@ export function connect() {
           });
         }
         break;
+      case 'treasureMapCollected':
+        const mapId = `treasureMap_${message.map.map}_${message.map.x}_${message.map.y}`;
+        localStorage.setItem(mapId, message.imageData);
+        console.log(`Stored treasure map ${mapId} in localStorage.`);
+        document.getElementById('show-maps-button').style.display = 'block';
+        break;
     }
   });
 

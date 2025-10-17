@@ -1,7 +1,7 @@
 import { createCanvas, loadImage } from 'canvas';
 import fs from 'fs';
 
-async function generateMapImage(mapData, x, y, outputPath) {
+async function generateMapImage(mapData, x, y) {
   const tileSize = 24;
   const width = 7 * tileSize;
   const height = 7 * tileSize;
@@ -85,10 +85,7 @@ async function generateMapImage(mapData, x, y, outputPath) {
   context.lineTo(treasureX - tileSize / 4, treasureY + tileSize / 4);
   context.stroke();
 
-  // Save the canvas to a file
-  const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`Treasure map image saved to ${outputPath}`);
+  return canvas.toDataURL('image/png');
 }
 
 export { generateMapImage };

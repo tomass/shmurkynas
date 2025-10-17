@@ -75,6 +75,7 @@ async function savePlayers() {
     colour: p.colour,
     status: p.status,
     lastAction: p.lastAction,
+    collectedMaps: p.collectedMaps || [],
     // Don't store WebSocket objects as they can't be serialized
   }));
 
@@ -129,7 +130,8 @@ async function loadPlayers() {
       players.set(player.id, {
         ...player,
         ws: null, // We'll set this when players reconnect
-        status: 'inactive' // mark inactive until they re-connect
+        status: 'inactive', // mark inactive until they re-connect
+        collectedMaps: player.collectedMaps || []
       });
     });
 
@@ -222,6 +224,9 @@ wss.on('connection', async ws => {
           if (!playerState.hasOwnProperty('map')) {
             playerState.map = 'base';
           }
+          if (!playerState.hasOwnProperty('collectedMaps')) {
+            playerState.collectedMaps = [];
+          }
           playerState.ws = ws;
           playerState.status = 'active';
           playerState.lastAction = dateNow();
@@ -258,6 +263,30 @@ wss.on('connection', async ws => {
         gamePoints,
         lastAction: dateNow()
       }));
+
+      // Send collected map images
+      if (playerState.collectedMaps && playerState.collectedMaps.length > 0) {
+        playerState.collectedMaps.forEach(mapInfo => {
+          const mapData = maps[mapInfo.map];
+          if (mapData) {
+            const mapHeight = mapData.tiles.length;
+            const drawingY = mapHeight - 1 - mapInfo.y;
+            generateMapImage(mapData.tiles, mapInfo.x, drawingY)
+              .then(imageData => {
+                const mapImageMessage = JSON.stringify({
+                  type: 'treasureMapCollected',
+                  map: mapInfo,
+                  imageData: imageData
+                });
+                ws.send(mapImageMessage);
+              })
+              .catch(err => {
+                logWithTimestamp('Error re-generating map image for returning player:', err);
+              });
+          }
+        });
+      }
+
       newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, map: playerState.map, colour: playerState.colour } });
 
     } else if (message.type === 'create') {
@@ -265,7 +294,7 @@ wss.on('connection', async ws => {
       const x = 3;
       const y = 3; // TODO: calculate empty position!
       // Add the new player to the server state
-      const playerState = { id, ws, x, y, map: 'base', name: getRandomName(), money: 0, colour: 'white', status: 'active', lastAction: dateNow() };
+      const playerState = { id, ws, x, y, map: 'base', name: getRandomName(), money: 0, colour: 'white', status: 'active', lastAction: dateNow(), collectedMaps: [] };
       players.set(id, playerState);
       // Send initialization data to the new client
       ws.send(JSON.stringify({
@@ -292,6 +321,46 @@ wss.on('connection', async ws => {
         player.map = message.map;
         player.status = 'active';
         player.lastAction = dateNow();
+
+        // Check if player stepped on a treasure map
+        if (adventures.length > 0) {
+          const adventure = adventures[0];
+          const mapIndex = adventure.maps.findIndex(m => m.map === player.map && m.x === player.x && m.y === player.y);
+
+          if (mapIndex !== -1) {
+            const collectedMap = adventure.maps.splice(mapIndex, 1)[0];
+            if (!player.collectedMaps) {
+              player.collectedMaps = [];
+            }
+            player.collectedMaps.push(collectedMap);
+            logWithTimestamp(`Player ${id} collected a treasure map at ${collectedMap.map} (${collectedMap.x}, ${collectedMap.y})`);
+
+            // Generate and send the map image
+            const mapData = maps[collectedMap.map];
+            if (mapData) {
+              const mapHeight = mapData.tiles.length;
+              const drawingY = mapHeight - 1 - collectedMap.y;
+              generateMapImage(mapData.tiles, collectedMap.x, drawingY)
+                .then(imageData => {
+                  const mapImageMessage = JSON.stringify({
+                    type: 'treasureMapCollected',
+                    map: collectedMap,
+                    imageData: imageData
+                  });
+                  ws.send(mapImageMessage);
+                })
+                .catch(err => {
+                  logWithTimestamp('Error generating map image:', err);
+                });
+            }
+
+            // Notify all clients about the updated adventure
+            const adventureUpdateMessage = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: adventure.maps } });
+            broadcastToAll(adventureUpdateMessage);
+            debouncedAdventuresSave();
+          }
+        }
+
         debouncedSave();
 
         // Broadcast the move to all other clients
