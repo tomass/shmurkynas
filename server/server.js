@@ -463,6 +463,36 @@ function spawnAdventure() {
   }
 }
 
-setInterval(spawnCoin, coinAppearanceInterval);
-setInterval(spawnAdventure, adventureAppearanceInterval);
+const coinInterval = setInterval(spawnCoin, coinAppearanceInterval);
+const adventureInterval = setInterval(spawnAdventure, adventureAppearanceInterval);
+
+async function gracefulShutdown() {
+  logWithTimestamp('Shutting down gracefully...');
+
+  // 1. Stop new connections and close existing ones
+  wss.close();
+
+  // 2. Clear intervals
+  clearInterval(coinInterval);
+  clearInterval(adventureInterval);
+
+  // 3. Save all data
+  try {
+    await Promise.all([
+      savePlayers(),
+      saveGamePoints(),
+      saveAdventures()
+    ]);
+    logWithTimestamp('All data saved.');
+  } catch (err) {
+    logWithTimestamp('Error saving data during shutdown:', err);
+  }
+
+  // 4. Exit the process
+  process.exit(0);
+}
+
+// Listen for termination signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
