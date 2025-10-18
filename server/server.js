@@ -13,9 +13,13 @@ const GAMEPOINTS_FILE = './gamePoints.json';
 const ADVENTURES_FILE = './adventures.json';
 
 const players = new Map();
-let gamePoints = [];
 let maps = {};
+let serverGamePoints = []; // all game points (comming not from a map) - coins, treasure maps.
 let adventures = [];
+
+function shortUUID() {
+  return Math.random().toString(36).substring(2, 10);
+}
 
 // Load map data on server startup
 async function loadMapData() {
@@ -87,7 +91,7 @@ async function savePlayers() {
 
 // Save all game points to file
 async function saveGamePoints() {
-  await fs.writeFile(GAMEPOINTS_FILE, JSON.stringify(gamePoints, null, 2));
+  await fs.writeFile(GAMEPOINTS_FILE, JSON.stringify(serverGamePoints, null, 2));
 }
 
 // Save all adventures to file
@@ -147,8 +151,8 @@ async function loadPlayers() {
 async function loadGamePoints() {
   try {
     const data = await fs.readFile(GAMEPOINTS_FILE, 'utf8');
-    gamePoints = JSON.parse(data);
-    logWithTimestamp(`Loaded ${gamePoints.length} game points from file`);
+    serverGamePoints = JSON.parse(data);
+    logWithTimestamp(`Loaded ${serverGamePoints.length} game points from file`);
   } catch (err) {
     if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
       logWithTimestamp('Error loading game points:', err);
@@ -184,6 +188,37 @@ function broadcastToOthers(senderId, message) {
         player.ws && player.ws.readyState === WebSocket.OPEN) {
       player.ws.send(message);
     }
+  }
+}
+
+function sendAdventureMaps(ws = null) {
+  // Remove all treasure map points. We will re-add them later.
+  serverGamePoints = serverGamePoints.filter(point => point.type !== 'treasureMap');
+
+  const allUncollectedMaps = adventures.flatMap(adventure => adventure.maps
+    .filter(m => m.collectedBy === null)
+    .map(m => ({...m, adventureId: adventure.id, adventureType: adventure.type}))
+  );
+
+  allUncollectedMaps.forEach(uncollectedMap => {
+    serverGamePoints.push({
+      type: 'treasureMap',
+      x: uncollectedMap.x,
+      y: uncollectedMap.y,
+      map: uncollectedMap.map,
+      adventureId: uncollectedMap.adventureId,
+      adventureType: uncollectedMap.adventureType
+    });
+  });
+  debouncedGamePointsSave();
+
+  const message = JSON.stringify({ type: 'updateGamePoints', gamePoints: serverGamePoints });
+    broadcastToAll(message);
+
+  if (ws) {
+    ws.send(message);
+  } else {
+    broadcastToAll(message);
   }
 }
 
@@ -260,7 +295,7 @@ wss.on('connection', async ws => {
         money: playerState.money,
         colour: playerState.colour,
         players: allPlayers,
-        gamePoints,
+        gamePoints: serverGamePoints,
         lastAction: dateNow()
       }));
 
@@ -307,7 +342,7 @@ wss.on('connection', async ws => {
         money: playerState.money,
         colour: playerState.colour,
         players: allPlayers,
-        gamePoints
+        gamePoints: serverGamePoints
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
@@ -324,11 +359,13 @@ wss.on('connection', async ws => {
 
         // Check if player stepped on a treasure map
         if (adventures.length > 0) {
-          const adventure = adventures[0];
-          const mapIndex = adventure.maps.findIndex(m => m.map === player.map && m.x === player.x && m.y === player.y);
+          const adventure = adventures[0]; // Note: for now we have only one adventure at a time
+          const mapIndex = adventure.maps.findIndex(m => m.map === player.map && m.x === player.x && m.y === player.y && m.collectedBy === null);
 
           if (mapIndex !== -1) {
-            const collectedMap = adventure.maps.splice(mapIndex, 1)[0];
+            //const collectedMap = adventure.maps.splice(mapIndex, 1)[0];
+            const collectedMap = adventure.maps[mapIndex];
+            adventure.maps[mapIndex].collectedBy = id;
             if (!player.collectedMaps) {
               player.collectedMaps = [];
             }
@@ -336,15 +373,16 @@ wss.on('connection', async ws => {
             logWithTimestamp(`Player ${id} collected a treasure map at ${collectedMap.map} (${collectedMap.x}, ${collectedMap.y})`);
 
             // Generate and send the map image
-            const mapData = maps[collectedMap.map];
+            const mapData = maps[adventure.map];
             if (mapData) {
-              const mapHeight = mapData.tiles.length;
-              const drawingY = mapHeight - 1 - collectedMap.y;
-              generateMapImage(mapData.tiles, collectedMap.x, drawingY)
+              //const mapHeight = mapData.tiles.length;
+              //const drawingY = mapHeight - 1 - collectedMap.y;
+              generateMapImage(mapData.tiles, adventure.x, adventure.y)
                 .then(imageData => {
                   const mapImageMessage = JSON.stringify({
                     type: 'treasureMapCollected',
                     map: collectedMap,
+                    adventureId: adventure.id,
                     imageData: imageData
                   });
                   ws.send(mapImageMessage);
@@ -354,10 +392,12 @@ wss.on('connection', async ws => {
                 });
             }
 
-            // Notify all clients about the updated adventure
-            const adventureUpdateMessage = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: adventure.maps } });
-            broadcastToAll(adventureUpdateMessage);
             debouncedAdventuresSave();
+            // Notify all clients about the updated adventure
+            sendAdventureMaps();
+            //const notCollectedMaps = adventure.maps.filter(m => m.collectedBy === null);
+            //const adventureUpdateMessage = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: notCollectedMaps } });
+            //broadcastToAll(adventureUpdateMessage);
           }
         }
 
@@ -396,11 +436,11 @@ wss.on('connection', async ws => {
     } else if (message.type === 'coinCollected') {
       const player = players.get(id);
       if (player) {
-        const coinIndex = gamePoints.findIndex(p => p.type === 'coin' && p.x === message.x && p.y === message.y && p.map === player.map);
+        const coinIndex = serverGamePoints.findIndex(p => p.type === 'coin' && p.x === message.x && p.y === message.y && p.map === player.map);
 
         if (coinIndex !== -1) {
           // 1. Remove coin from the array
-          gamePoints.splice(coinIndex, 1);
+          serverGamePoints.splice(coinIndex, 1);
           debouncedGamePointsSave();
 
           // 2. Register +1 money for the player
@@ -409,7 +449,7 @@ wss.on('connection', async ws => {
           debouncedSave();
 
           // 3. Send updated positions of coins to all players
-          const coinsUpdateMessage = JSON.stringify({ type: 'gamePointsUpdated', gamePoints });
+          const coinsUpdateMessage = JSON.stringify({ type: 'updateCoins', gamePoints: serverGamePoints });
           broadcastToAll(coinsUpdateMessage);
 
           // 4. Send a message to the user with increased total amount of his money
@@ -418,9 +458,26 @@ wss.on('connection', async ws => {
         } else {
           // Coin doesn't exist, maybe another player collected it.
           // Send current coin state to the player.
-          const coinsUpdateMessage = JSON.stringify({ type: 'gamePointsUpdated', gamePoints });
+          const coinsUpdateMessage = JSON.stringify({ type: 'updateCoins', gamePoints: serverGamePoints });
           ws.send(coinsUpdateMessage);
         }
+      }
+    } else if (message.type === 'digging') {
+      const player = players.get(id);
+      if (player && player.money >= 0) { // server should validate money again
+        player.money--; // This was already done on client, but we do it here for consistency
+        const adventure = adventures.find(a => a.map === player.map && a.x === player.x && a.y === player.y);
+        if (adventure) {
+          logWithTimestamp(`Player ${id} has found a treasure!`);
+          const award = 100;
+          player.money += award;
+          adventures = adventures.filter(a => a !== adventure);
+          debouncedAdventuresSave();
+          ws.send(JSON.stringify({ type: 'treasureFound', award }));
+          // also update player money on client
+          ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+        }
+      debouncedSave();
       }
     }
 
@@ -437,8 +494,10 @@ wss.on('connection', async ws => {
 
       if (adventures.length > 0) {
         const adventure = adventures[0];
-        const message = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: adventure.maps } });
-        ws.send(message);
+        sendAdventureMaps(ws);
+        //const notCollectedMaps = adventure.maps.filter(m => m.collectedBy === null);
+        //const message = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: notCollectedMaps } });
+        //ws.send(message);
       }
     }
   });
@@ -471,7 +530,7 @@ function spawnCoin() {
         return;
     }
 
-    const coins = gamePoints.filter(p => p.type === 'coin');
+    const coins = serverGamePoints.filter(p => p.type === 'coin');
     if (coins.length >= maxCoins) {
         return;
     }
@@ -505,11 +564,11 @@ function spawnCoin() {
     const logicalY = randomTile.tileLength - 1 - randomTile.y;
 
     const newCoin = { type: 'coin', x: randomTile.x, y: logicalY, map: randomTile.mapName };
-    gamePoints.push(newCoin);
+    serverGamePoints.push(newCoin);
     debouncedGamePointsSave();
     logWithTimestamp(`New coin spawned at (${newCoin.map}, ${newCoin.x}, ${newCoin.y})`);
 
-    const message = JSON.stringify({ type: 'newCoin', gamePoints });
+    const message = JSON.stringify({ type: 'updateGamePoints', gamePoints: serverGamePoints });
     broadcastToAll(message);
 }
 
@@ -519,6 +578,7 @@ async function spawnAdventure() {
   }
 
   const newAdventure = {
+    id: shortUUID(),
     type: 'treasure1',
     createDate: dateNow()
   };
@@ -532,37 +592,22 @@ async function spawnAdventure() {
   newAdventure.y = treasureLocation.y;
   newAdventure.map = treasureLocation.mapName;
 
-  logWithTimestamp(`Spawning adventure: ${newAdventure.type} at ${newAdventure.map} (${newAdventure.x}, ${newAdventure.y})`);
-
-  const mapData = maps[newAdventure.map];
-  if (mapData) {
-      const mapHeight = mapData.tiles.length;
-      const drawingY = mapHeight - 1 - newAdventure.y;
-      /*try {
-          await generateMapImage(mapData.tiles, newAdventure.x, drawingY, './map.png');
-          logWithTimestamp(`Successfully generated treasure map image.`);
-      } catch (error) {
-          logWithTimestamp('Error generating treasure map image:', error);
-      }*/
-  } else {
-      logWithTimestamp(`Error: Map "${newAdventure.map}" not found for image generation.`);
-  }
+  logWithTimestamp(`Spawning adventure: ${newAdventure.id} ${newAdventure.type} at ${newAdventure.map} (${newAdventure.x}, ${newAdventure.y})`);
 
   newAdventure.maps = [];
   for (let i = 0; i < 1; i++) {
     const mapLocation = findTile(['Ž', 'R']);
-     if (!mapLocation) {
+    if (!mapLocation) {
         logWithTimestamp('Could not find a suitable tile to place the adventure map item.');
         continue;
     }
-    newAdventure.maps.push({ map: mapLocation.mapName, x: mapLocation.x, y: mapLocation.y });
+    newAdventure.maps.push({ id: i, map: mapLocation.mapName, x: mapLocation.x, y: mapLocation.y, collectedBy: null });
     logWithTimestamp(`   > Placing map item at ${mapLocation.mapName} (${mapLocation.x}, ${mapLocation.y})`);
   }
 
   adventures.push(newAdventure);
   debouncedAdventuresSave();
-  const message = JSON.stringify({ type: 'newAdventure', adventure: { type: newAdventure.type, maps: newAdventure.maps } });
-  broadcastToAll(message);
+  sendAdventureMaps();
 }
 
 const coinInterval = setInterval(spawnCoin, coinAppearanceInterval);

@@ -4,8 +4,17 @@ import { queueMove, playerData as position } from "./components/Player";
 import { currentPoints, switchToMap } from "./components/Map";
 import { findPath, initializePathfinding } from "./utilies/findPath";
 import { sendMessage } from "./websocket";
+import { playerData, updatePlayerMoney } from "./components/Player";
 
 export function collectUserInput(camera, handleZoom) {
+    const digButton = document.getElementById('dig-button');
+    digButton.addEventListener('click', () => {
+        if (playerData.money > 0) {
+            updatePlayerMoney(playerData.money - 1);
+            sendMessage({ type: 'digging' });
+        }
+    });
+
     window.addEventListener("keydown", (event) => {
         if (event.key === "ArrowUp") {
             event.preventDefault();

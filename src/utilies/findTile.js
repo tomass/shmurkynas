@@ -22,7 +22,6 @@ export function findTile(tileTypes) {
     }
 
     const randomTile = tiles[Math.floor(Math.random() * tiles.length)];
-    const logicalY = randomTile.tileLength - 1 - randomTile.y;
 
-    return { x: randomTile.x, y: logicalY, mapName: randomTile.mapName };
+    return { x: randomTile.x, y: randomTile.y, mapName: randomTile.mapName };
 }

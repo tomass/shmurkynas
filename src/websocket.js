@@ -1,12 +1,24 @@
 import { removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
 import { setGamePoints, currentMapName, map } from './components/Map.js';
-import { updatePlayerMoney } from './components/Player.js';
+import { updatePlayerMoney, playerData } from './components/Player.js';
 import { TreasureMap } from './components/TreasureMap.js';
 
 let socket;
 let playerId = null;
 let reconnectTimer = null;
 let pingInterval = null;
+
+function removeOldTreasureMaps(activeMaps) {
+  const storedMaps = Object.keys(localStorage).filter(key => key.startsWith('treasureMap_'));
+  const activeMapIds = activeMaps.map(map => `treasureMap_${map.adventureId}_${map.map.id}`);
+
+  storedMaps.forEach(mapId => {
+    if (!activeMapIds.includes(mapId)) {
+      localStorage.removeItem(mapId);
+      console.log(`Removed old treasure map ${mapId} from localStorage.`);
+    }
+  });
+}
 
 export function connect() {
   playerId = localStorage.getItem('playerId') || null;
@@ -49,8 +61,9 @@ export function connect() {
         const gameInitEvent = new CustomEvent('game-init', { detail: message });
         window.dispatchEvent(gameInitEvent);
         break;
-      case 'newCoin':
+      case 'updateGamePoints':
         setGamePoints(message.gamePoints);
+        removeOldTreasureMaps(message.gamePoints.filter(point => point.type === 'treasureMap'));
         // We might need a way to redraw the map or just the points
         break;
       case 'newPlayer':
@@ -73,28 +86,15 @@ export function connect() {
           updateOtherPlayer(message);
         }
         break;
-      case 'gamePointsUpdated':
-        setGamePoints(message.gamePoints);
-        break;
       case 'updateMoney':
         updatePlayerMoney(message.money);
         break;
-      case 'newAdventure':
-        // Clear existing treasure maps
-        map.children.filter(c => c.name === 'treasureMap').forEach(c => map.remove(c));
-
-        if (message.adventure.maps) {
-          message.adventure.maps.forEach(mapLocation => {
-            if (mapLocation.map === currentMapName) {
-              const treasureMap = TreasureMap(mapLocation.x, mapLocation.y);
-              treasureMap.name = 'treasureMap';
-              map.add(treasureMap);
-            }
-          });
-        }
+      case 'treasureFound':
+        updatePlayerMoney(playerData.money + message.award);
+        console.log(`Congratulations! You found a treasure worth ${message.award}!`);
         break;
       case 'treasureMapCollected':
-        const mapId = `treasureMap_${message.map.map}_${message.map.x}_${message.map.y}`;
+        const mapId = `treasureMap_${message.adventureId}_${message.map.id}`;
         localStorage.setItem(mapId, message.imageData);
         console.log(`Stored treasure map ${mapId} in localStorage.`);
         document.getElementById('show-maps-button').style.display = 'block';

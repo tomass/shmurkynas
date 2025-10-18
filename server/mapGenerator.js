@@ -29,13 +29,13 @@ async function generateMapImage(mapData, x, y) {
       const tileY = row * tileSize;
 
       const mapX = x - distance + col;
-      const mapY = y - distance + row;
+      const mapY = y + distance - row;
 
       // Check bounds
       if (mapX < 0 || mapY < 0 || mapY >= mapData.length || mapX >= mapData[0].length) {
         continue; // Out of bounds, leave as parchment
       }
-      switch (mapData[mapX][mapY]) {
+      switch (mapData[mapY][mapX]) {
         case 'P': // Building
           context.fillStyle = '#6E6E6E'; // Dark grey
           context.fillRect(tileX, tileY, tileSize, tileSize);

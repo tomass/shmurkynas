@@ -6,17 +6,18 @@ import { Building } from "./Building.js";
 import { Water } from "./Water.js";
 import { ActivePoint } from "./ActivePoint.js";
 import { Coin } from "./Coin.js";
+import { TreasureMap } from "./TreasureMap.js";
 import { Floor } from "./Floor.js";
 import { Chair } from "./Chair.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition.js";
 import { initializePlayer } from "./Player.js";
 import { updateAllOtherPlayers } from "../otherPlayers.js";
 
-export let maps = {}; // TODO: We want to transform this right after loading to avoid recalculating Y inversion all the time.
-export let mapData = [];
-export let currentPoints = [];
-export let gamePoints = [];
-export let currentMapName = 'base';
+export let maps = {}; // Data of ALL maps
+export let mapData = []; // data of the CURRENT map being rendered
+export let currentPoints = []; // active points of the CURRENT map being rendered
+export let gamePoints = []; // list of all game points (coins, treasure maps, etc) on all maps
+export let currentMapName = 'base'; // This should not be required, server sends our initial map and position
 export const map = new THREE.Group();
 export const gamePointsGroup = new THREE.Group();
 map.add(gamePointsGroup);
@@ -27,6 +28,10 @@ export function drawGamePoints() {
         if (point.type === 'coin' && point.map === currentMapName) {
             const coin = Coin(point.x, point.y, 0xffd700);
             gamePointsGroup.add(coin);
+        }
+        if (point.type === 'treasureMap' && point.map === currentMapName) {
+            const treasureMap = TreasureMap(point.x, point.y);
+            gamePointsGroup.add(treasureMap);
         }
     });
 }
@@ -44,6 +49,7 @@ export function initialiseMapData(downloadedMaps) {
   maps = downloadedMaps;
   if (maps['base']) {
     // Set initial mapData for other modules that might need it before rendering
+    console.log('!!!!!!!!!!!!!!!!!!!!!! reversing here, this should not be required anymore !!!!!!!!!!!!!!!!!!!!!!');
     mapData = [...maps['base'].tiles].reverse();
     currentPoints = maps['base'].points;
   }
@@ -57,7 +63,7 @@ export function initialiseMap(mapName = 'base') {
   }
   // Update mapData to the one being rendered.
   currentMapName = mapName;
-  mapData = [...maps[mapName].tiles].reverse();
+  mapData = [...maps[mapName].tiles];
   currentPoints = maps[mapName].points;
 
   map.remove(...map.children);

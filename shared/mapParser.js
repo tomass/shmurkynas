@@ -19,7 +19,8 @@ export function parseMapData(text) {
     } else {
       tilesData = content.substring(tilesStart + "[tiles]".length).trim();
     }
-    const tileArray = tilesData.split('\n').map(line => line.split(''));
+    // Note: reversing the rows to match coordinate system - y=0 at bottom
+    const tileArray = tilesData.split('\n').map(line => line.split('')).reverse();
 
     const points = [];
     if (pointsStart !== -1) {
