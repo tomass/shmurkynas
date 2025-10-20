@@ -8,14 +8,34 @@ let playerId = null;
 let reconnectTimer = null;
 let pingInterval = null;
 
-function removeOldTreasureMaps(activeMaps) {
+
+function removeOldTreasureMaps(activeAdventures) {
   const storedMaps = Object.keys(localStorage).filter(key => key.startsWith('treasureMap_'));
-  const activeMapIds = activeMaps.map(map => `treasureMap_${map.adventureId}_${map.map.id}`);
 
   storedMaps.forEach(mapId => {
-    if (!activeMapIds.includes(mapId)) {
+    if (!activeAdventures.some(advId => mapId.includes(advId))) {
       localStorage.removeItem(mapId);
       console.log(`Removed old treasure map ${mapId} from localStorage.`);
+    }
+  });
+
+  const remainingMaps = Object.keys(localStorage).filter(key => key.startsWith('treasureMap_'));
+  if (remainingMaps.length === 0) {
+    document.getElementById('show-maps-button').style.display = 'none';
+  } else {
+    document.getElementById('show-maps-button').style.display = 'block';
+  }
+}
+
+// This is called when a treasuer is found and we therefore know that all our maps
+// for that adventure can be removed.
+function removeTreasureMaps(adventureId) {
+  const storedMaps = Object.keys(localStorage).filter(key => key.startsWith('treasureMap_'));
+
+  storedMaps.forEach(mapId => {
+    if (mapId.includes(`treasureMap_${adventureId}_`)) {
+      localStorage.removeItem(mapId);
+      console.log(`Removed collected treasure map ${mapId} from localStorage.`);
     }
   });
 }
@@ -63,8 +83,9 @@ export function connect() {
         break;
       case 'updateGamePoints':
         setGamePoints(message.gamePoints);
-        removeOldTreasureMaps(message.gamePoints.filter(point => point.type === 'treasureMap'));
-        // We might need a way to redraw the map or just the points
+        break;
+      case 'activeAdventures':
+        removeOldTreasureMaps(message.adventures);
         break;
       case 'newPlayer':
         if (message.player.id !== playerId) {
@@ -90,11 +111,11 @@ export function connect() {
         updatePlayerMoney(message.money);
         break;
       case 'treasureFound':
-        updatePlayerMoney(playerData.money + message.award);
-        console.log(`Congratulations! You found a treasure worth ${message.award}!`);
+        console.log(`Congratulations! You found a treasure ${message.adventureId} worth ${message.award}!`);
+        removeTreasureMaps(message.adventureId);
         break;
       case 'treasureMapCollected':
-        const mapId = `treasureMap_${message.adventureId}_${message.map.id}`;
+        const mapId = `treasureMap_${message.map.adventureId}_${message.map.id}`;
         localStorage.setItem(mapId, message.imageData);
         console.log(`Stored treasure map ${mapId} in localStorage.`);
         document.getElementById('show-maps-button').style.display = 'block';

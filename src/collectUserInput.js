@@ -50,6 +50,14 @@ export function collectUserInput(camera, handleZoom) {
         if (settingsDialog && settingsDialog.style.display === 'block' && settingsDialog.contains(event.target)) {
             return; // Allow default behavior for the dialog
         }
+        const toolbar = document.getElementById('toolbar');
+        if (toolbar.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
+        const mapViewer = document.getElementById('map-viewer');
+        if (mapViewer.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
         if (event.touches.length === 2) {
             isPinching = true;
             initialTouchDistance = getTouchDistance(event.touches);
@@ -61,6 +69,14 @@ export function collectUserInput(camera, handleZoom) {
         const settingsDialog = document.getElementById('settings-dialog');
         // If the touch is inside the settings dialog, do NOT prevent default
         if (settingsDialog && settingsDialog.style.display === 'block' && settingsDialog.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
+        const toolbar = document.getElementById('toolbar');
+        if (toolbar.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
+        const mapViewer = document.getElementById('map-viewer');
+        if (mapViewer.contains(event.target)) {
             return; // Allow default behavior for the dialog
         }
         if (isPinching && event.touches.length === 2) {

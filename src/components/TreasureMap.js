@@ -6,8 +6,6 @@ export function TreasureMap(x, y) {
         new THREE.CylinderGeometry(10, 10, 1, 17),
         new THREE.MeshLambertMaterial({
             color: new THREE.Color("#e71607"),
-            roughness: 0.5,
-            metalness: 0.1,
             flatShading: true,
         })
     );

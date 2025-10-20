@@ -191,6 +191,17 @@ function broadcastToOthers(senderId, message) {
   }
 }
 
+function sendActiveAdventures(ws = null) {
+  const adventureIds = adventures.map(adv => adv.id);
+  const message = JSON.stringify({ type: 'activeAdventures', adventures: adventureIds });
+  logWithTimestamp('sending message about active adventures:', message);
+  if (ws) {
+    ws.send(message);
+  } else {
+    broadcastToAll(message);
+  }
+}
+
 function sendAdventureMaps(ws = null) {
   // Remove all treasure map points. We will re-add them later.
   serverGamePoints = serverGamePoints.filter(point => point.type !== 'treasureMap');
@@ -220,6 +231,16 @@ function sendAdventureMaps(ws = null) {
   } else {
     broadcastToAll(message);
   }
+}
+
+function removePlayersTreasureMaps(adventureId) {
+  // Remove treasure maps related to the given adventure from all players' collectedMaps
+  for (const player of players.values()) {
+    if (player.collectedMaps && player.collectedMaps.length > 0) {
+      player.collectedMaps = player.collectedMaps.filter(mapInfo => mapInfo.adventureId !== adventureId);
+    }
+  }
+  sendAdventureMaps();
 }
 
 // Load initial data
@@ -304,9 +325,8 @@ wss.on('connection', async ws => {
         playerState.collectedMaps.forEach(mapInfo => {
           const mapData = maps[mapInfo.map];
           if (mapData) {
-            const mapHeight = mapData.tiles.length;
-            const drawingY = mapHeight - 1 - mapInfo.y;
-            generateMapImage(mapData.tiles, mapInfo.x, drawingY)
+            const adventure = adventures.find(adv => adv.id === mapInfo.adventureId);
+            generateMapImage(mapData.tiles, adventure.x, adventure.y)
               .then(imageData => {
                 const mapImageMessage = JSON.stringify({
                   type: 'treasureMapCollected',
@@ -321,6 +341,7 @@ wss.on('connection', async ws => {
           }
         });
       }
+      sendActiveAdventures(ws);
 
       newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, map: playerState.map, colour: playerState.colour } });
 
@@ -364,7 +385,8 @@ wss.on('connection', async ws => {
 
           if (mapIndex !== -1) {
             //const collectedMap = adventure.maps.splice(mapIndex, 1)[0];
-            const collectedMap = adventure.maps[mapIndex];
+            let collectedMap = adventure.maps[mapIndex];
+            collectedMap.adventureId = adventure.id;
             adventure.maps[mapIndex].collectedBy = id;
             if (!player.collectedMaps) {
               player.collectedMaps = [];
@@ -382,7 +404,6 @@ wss.on('connection', async ws => {
                   const mapImageMessage = JSON.stringify({
                     type: 'treasureMapCollected',
                     map: collectedMap,
-                    adventureId: adventure.id,
                     imageData: imageData
                   });
                   ws.send(mapImageMessage);
@@ -395,6 +416,7 @@ wss.on('connection', async ws => {
             debouncedAdventuresSave();
             // Notify all clients about the updated adventure
             sendAdventureMaps();
+            sendActiveAdventures();
             //const notCollectedMaps = adventure.maps.filter(m => m.collectedBy === null);
             //const adventureUpdateMessage = JSON.stringify({ type: 'newAdventure', adventure: { type: adventure.type, maps: notCollectedMaps } });
             //broadcastToAll(adventureUpdateMessage);
@@ -449,7 +471,7 @@ wss.on('connection', async ws => {
           debouncedSave();
 
           // 3. Send updated positions of coins to all players
-          const coinsUpdateMessage = JSON.stringify({ type: 'updateCoins', gamePoints: serverGamePoints });
+          const coinsUpdateMessage = JSON.stringify({ type: 'updateGamePoints', gamePoints: serverGamePoints });
           broadcastToAll(coinsUpdateMessage);
 
           // 4. Send a message to the user with increased total amount of his money
@@ -458,7 +480,7 @@ wss.on('connection', async ws => {
         } else {
           // Coin doesn't exist, maybe another player collected it.
           // Send current coin state to the player.
-          const coinsUpdateMessage = JSON.stringify({ type: 'updateCoins', gamePoints: serverGamePoints });
+          const coinsUpdateMessage = JSON.stringify({ type: 'updateGamePoints', gamePoints: serverGamePoints });
           ws.send(coinsUpdateMessage);
         }
       }
@@ -473,9 +495,9 @@ wss.on('connection', async ws => {
           player.money += award;
           adventures = adventures.filter(a => a !== adventure);
           debouncedAdventuresSave();
-          ws.send(JSON.stringify({ type: 'treasureFound', award }));
-          // also update player money on client
+          ws.send(JSON.stringify({ type: 'treasureFound', award, adventureId: adventure.id }));
           ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          removePlayersTreasureMaps(adventure.id);
         }
       debouncedSave();
       }
@@ -561,9 +583,8 @@ function spawnCoin() {
     }
 
     const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
-    const logicalY = randomTile.tileLength - 1 - randomTile.y;
 
-    const newCoin = { type: 'coin', x: randomTile.x, y: logicalY, map: randomTile.mapName };
+    const newCoin = { type: 'coin', x: randomTile.x, y: randomTile.y, map: randomTile.mapName };
     serverGamePoints.push(newCoin);
     debouncedGamePointsSave();
     logWithTimestamp(`New coin spawned at (${newCoin.map}, ${newCoin.x}, ${newCoin.y})`);
