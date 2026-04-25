@@ -106,12 +106,32 @@ const nextMapButton = document.getElementById('next-map-button');
 let collectedMapImages = [];
 let currentMapIndex = 0;
 
+function isValidImageUrl(url) {
+  return (
+    typeof url === 'string' &&
+    (url.startsWith('http://') ||
+     url.startsWith('https://') ||
+     url.startsWith('data:image/'))
+  );
+}
+
 function updateMapViewer() {
   if (collectedMapImages.length === 0) {
-    mapImageContainer.innerHTML = '';
+    mapImageContainer.textContent = '';
     return;
   }
-  mapImageContainer.innerHTML = `<img src="${collectedMapImages[currentMapIndex]}" />`;
+
+  const url = collectedMapImages[currentMapIndex];
+  if (!isValidImageUrl(url)) {
+    console.error('Invalid image URL:', url);
+    mapImageContainer.textContent = 'Invalid map image';
+    return;
+  }
+
+  const img = document.createElement('img');
+  img.src = url;
+  mapImageContainer.textContent = '';
+  mapImageContainer.appendChild(img);
   prevMapButton.style.display = collectedMapImages.length > 1 ? 'block' : 'none';
   nextMapButton.style.display = collectedMapImages.length > 1 ? 'block' : 'none';
 }

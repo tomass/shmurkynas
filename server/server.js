@@ -326,18 +326,20 @@ wss.on('connection', async ws => {
           const mapData = maps[mapInfo.map];
           if (mapData) {
             const adventure = adventures.find(adv => adv.id === mapInfo.adventureId);
-            generateMapImage(mapData.tiles, adventure.x, adventure.y)
-              .then(imageData => {
-                const mapImageMessage = JSON.stringify({
-                  type: 'treasureMapCollected',
-                  map: mapInfo,
-                  imageData: imageData
+            if (adventure) {
+              generateMapImage(mapData.tiles, adventure.x, adventure.y)
+                .then(imageData => {
+                  const mapImageMessage = JSON.stringify({
+                    type: 'treasureMapCollected',
+                    map: mapInfo,
+                    imageData: imageData
+                  });
+                  ws.send(mapImageMessage);
+                })
+                .catch(err => {
+                  logWithTimestamp('Error re-generating map image for returning player:', err);
                 });
-                ws.send(mapImageMessage);
-              })
-              .catch(err => {
-                logWithTimestamp('Error re-generating map image for returning player:', err);
-              });
+            }
           }
         });
       }

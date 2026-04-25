@@ -7,53 +7,52 @@ function initializeSettings() {
   const playerNameDiv = document.getElementById('playerName');
   const playerColourDiv = document.getElementById('playerColour');
 
-  fetch('/settings.html')
-    .then(response => response.text())
-    .then(html => {
-      settingsContainer.innerHTML = html;
-      const settingsDialog = document.getElementById('settings-dialog');
-      const closeButton = document.getElementById('close-settings');
-      const saveButton = document.getElementById('save-settings');
-      const nameInput = document.getElementById('new-player-name');
-      const colourInput = document.getElementById('new-player-colour');
+  const template = document.getElementById('settings-template');
+  const content = template.content.cloneNode(true);
+  settingsContainer.appendChild(content);
 
-      const openSettings = (event) => {
-        event.preventDefault();
-        nameInput.value = playerData.name;
-        colourInput.value = playerData.colour;
-        settingsDialog.style.display = 'block';
-      }
+  const settingsDialog = document.getElementById('settings-dialog');
+  const closeButton = document.getElementById('close-settings');
+  const saveButton = document.getElementById('save-settings');
+  const nameInput = document.getElementById('new-player-name');
+  const colourInput = document.getElementById('new-player-colour');
 
-      settingsButton.addEventListener('touchend', openSettings);
-      settingsButton.addEventListener('click', openSettings);
+  const openSettings = (event) => {
+    event.preventDefault();
+    nameInput.value = playerData.name;
+    colourInput.value = playerData.colour;
+    settingsDialog.style.display = 'block';
+  }
 
-      const closeSettings = (event) => {
-        event.preventDefault();
-        settingsDialog.style.display = 'none';
-      };
+  settingsButton.addEventListener('touchend', openSettings);
+  settingsButton.addEventListener('click', openSettings);
 
-      const saveSettings = (event) => {
-        event.preventDefault();
-        const newName = nameInput.value;
-        const newColour = colourInput.value;
-        sendSettings(newName, newColour);
-        updatePlayerColour(newColour);
+  const closeSettings = (event) => {
+    event.preventDefault();
+    settingsDialog.style.display = 'none';
+  };
 
-        playerData.name = newName;
-        playerData.colour = newColour;
+  const saveSettings = (event) => {
+    event.preventDefault();
+    const newName = nameInput.value;
+    const newColour = colourInput.value;
+    sendSettings(newName, newColour);
+    updatePlayerColour(newColour);
 
-        playerNameDiv.textContent = newName;
-        playerColourDiv.style.backgroundColor = newColour;
+    playerData.name = newName;
+    playerData.colour = newColour;
 
-        settingsDialog.style.display = 'none';
-      };
+    playerNameDiv.textContent = newName;
+    playerColourDiv.style.backgroundColor = newColour;
 
-      closeButton.addEventListener('click', closeSettings);
-      closeButton.addEventListener('touchend', closeSettings);
+    settingsDialog.style.display = 'none';
+  };
 
-      saveButton.addEventListener('click', saveSettings);
-      saveButton.addEventListener('touchend', saveSettings);
-    });
+  closeButton.addEventListener('click', closeSettings);
+  closeButton.addEventListener('touchend', closeSettings);
+
+  saveButton.addEventListener('click', saveSettings);
+  saveButton.addEventListener('touchend', saveSettings);
 }
 
 initializeSettings();
