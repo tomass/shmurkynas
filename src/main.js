@@ -15,6 +15,7 @@ import { initializePathfinding } from "./utilies/findPath";
 import { parseMapData } from "../shared/mapParser.js";
 import { connect, sendMessage } from "./websocket.js";
 import "./settings.js";
+import { collectedMapImages } from "./collectedMaps.js";
 
 const scene = new THREE.Scene();
 scene.add(player);
@@ -106,7 +107,7 @@ const closeMapViewerButton = document.getElementById('close-map-viewer-button');
 const prevMapButton = document.getElementById('prev-map-button');
 const nextMapButton = document.getElementById('next-map-button');
 
-let collectedMapImages = [];
+let viewerImages = [];
 let currentMapIndex = 0;
 
 function isValidImageUrl(url) {
@@ -119,12 +120,12 @@ function isValidImageUrl(url) {
 }
 
 function updateMapViewer() {
-  if (collectedMapImages.length === 0) {
+  if (viewerImages.length === 0) {
     mapImageContainer.textContent = '';
     return;
   }
 
-  const url = collectedMapImages[currentMapIndex];
+  const url = viewerImages[currentMapIndex];
   if (!isValidImageUrl(url)) {
     console.error('Invalid image URL:', url);
     mapImageContainer.textContent = 'Invalid map image';
@@ -135,18 +136,12 @@ function updateMapViewer() {
   img.src = url;
   mapImageContainer.textContent = '';
   mapImageContainer.appendChild(img);
-  prevMapButton.style.display = collectedMapImages.length > 1 ? 'block' : 'none';
-  nextMapButton.style.display = collectedMapImages.length > 1 ? 'block' : 'none';
+  prevMapButton.style.display = viewerImages.length > 1 ? 'block' : 'none';
+  nextMapButton.style.display = viewerImages.length > 1 ? 'block' : 'none';
 }
 
-showMapsButton.addEventListener('click', () => {
-  collectedMapImages = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key.startsWith('treasureMap_')) {
-      collectedMapImages.push(localStorage.getItem(key));
-    }
-  }
+showMapsButton.addEventListener('click', async () => {
+  viewerImages = await collectedMapImages();
   currentMapIndex = 0;
   updateMapViewer();
   mapViewer.style.display = 'block';
@@ -157,11 +152,11 @@ closeMapViewerButton.addEventListener('click', () => {
 });
 
 prevMapButton.addEventListener('click', () => {
-  currentMapIndex = (currentMapIndex - 1 + collectedMapImages.length) % collectedMapImages.length;
+  currentMapIndex = (currentMapIndex - 1 + viewerImages.length) % viewerImages.length;
   updateMapViewer();
 });
 
 nextMapButton.addEventListener('click', () => {
-  currentMapIndex = (currentMapIndex + 1) % collectedMapImages.length;
+  currentMapIndex = (currentMapIndex + 1) % viewerImages.length;
   updateMapViewer();
 });

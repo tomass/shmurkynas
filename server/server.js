@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'fs';
 import { parseMapData } from '../shared/mapParser.js';
 import { generateMapImage } from './mapGenerator.js';
+import { tearImage } from './tearMap.js';
 import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval, adventureAbandonInterval } from '../src/constants.js';
 import { findTile } from '../src/utilies/findTile.js';
 import { initialiseMapData } from '../src/components/Map.js';
@@ -16,6 +17,64 @@ const players = new Map();
 let maps = {};
 let serverGamePoints = []; // all game points (comming not from a map) - coins, treasure maps.
 let adventures = [];
+// Torn map pieces of an adventure, kept so the same map is not drawn and torn
+// again for every single piece a player has. Keyed by adventure id.
+const adventureMapPieces = new Map();
+
+// The kinds of adventure that can appear. The number in the name says into how
+// many pieces the treasure map is torn.
+const adventureTypes = ['treasure1', 'treasure2', 'treasure4'];
+
+function pieceCount(adventure) {
+  const count = Number(String(adventure.type).replace('treasure', ''));
+  return Number.isFinite(count) && count > 0 ? count : 1;
+}
+
+// Draws the treasure map of an adventure and tears it into its pieces. The same
+// seed - the adventure id - always gives the very same pieces back.
+async function getAdventureMapPieces(adventure) {
+  const cached = adventureMapPieces.get(adventure.id);
+  if (cached) {
+    return cached;
+  }
+  const mapData = maps[adventure.map];
+  if (!mapData) {
+    logWithTimestamp(`Cannot draw a treasure map, map '${adventure.map}' is not known.`);
+    return null;
+  }
+  const whole = await generateMapImage(mapData.tiles, adventure.x, adventure.y);
+  const pieces = await tearImage(whole, pieceCount(adventure), adventure.id);
+  adventureMapPieces.set(adventure.id, pieces);
+  return pieces;
+}
+
+// Sends one piece of an adventure treasure map to one player.
+async function sendMapPiece(ws, adventure, mapInfo) {
+  try {
+    const torn = await getAdventureMapPieces(adventure);
+    const piece = torn && torn.pieces[mapInfo.id];
+    if (!piece) {
+      return;
+    }
+    ws.send(JSON.stringify({
+      type: 'treasureMapCollected',
+      map: mapInfo,
+      imageData: piece.image,
+      // Where this scrap sat on the whole map, so several of them can be laid
+      // back together by the player who found them.
+      piece: {
+        x: piece.x,
+        y: piece.y,
+        width: piece.width,
+        height: piece.height,
+        sheetWidth: torn.sheetWidth,
+        sheetHeight: torn.sheetHeight
+      }
+    }));
+  } catch (error) {
+    logWithTimestamp('Error drawing a treasure map piece:', error);
+  }
+}
 
 function shortUUID() {
   return Math.random().toString(36).substring(2, 10);
@@ -350,23 +409,9 @@ wss.on('connection', async ws => {
       // Send collected map images
       if (playerState.collectedMaps && playerState.collectedMaps.length > 0) {
         playerState.collectedMaps.forEach(mapInfo => {
-          const mapData = maps[mapInfo.map];
-          if (mapData) {
-            const adventure = adventures.find(adv => adv.id === mapInfo.adventureId);
-            if (adventure) {
-              generateMapImage(mapData.tiles, adventure.x, adventure.y)
-                .then(imageData => {
-                  const mapImageMessage = JSON.stringify({
-                    type: 'treasureMapCollected',
-                    map: mapInfo,
-                    imageData: imageData
-                  });
-                  ws.send(mapImageMessage);
-                })
-                .catch(err => {
-                  logWithTimestamp('Error re-generating map image for returning player:', err);
-                });
-            }
+          const adventure = adventures.find(adv => adv.id === mapInfo.adventureId);
+          if (adventure) {
+            sendMapPiece(ws, adventure, mapInfo);
           }
         });
       }
@@ -423,24 +468,8 @@ wss.on('connection', async ws => {
             player.collectedMaps.push(collectedMap);
             logWithTimestamp(`Player ${id} collected a treasure map at ${collectedMap.map} (${collectedMap.x}, ${collectedMap.y})`);
 
-            // Generate and send the map image
-            const mapData = maps[adventure.map];
-            if (mapData) {
-              //const mapHeight = mapData.tiles.length;
-              //const drawingY = mapHeight - 1 - collectedMap.y;
-              generateMapImage(mapData.tiles, adventure.x, adventure.y)
-                .then(imageData => {
-                  const mapImageMessage = JSON.stringify({
-                    type: 'treasureMapCollected',
-                    map: collectedMap,
-                    imageData: imageData
-                  });
-                  ws.send(mapImageMessage);
-                })
-                .catch(err => {
-                  logWithTimestamp('Error generating map image:', err);
-                });
-            }
+            // Draw and send the piece of the map that was just picked up.
+            sendMapPiece(ws, adventure, collectedMap);
 
             debouncedAdventuresSave();
             // Notify all clients about the updated adventure
@@ -523,6 +552,7 @@ wss.on('connection', async ws => {
           const award = 100;
           player.money += award;
           adventures = adventures.filter(a => a !== adventure);
+          adventureMapPieces.delete(adventure.id);
           debouncedAdventuresSave();
           ws.send(JSON.stringify({ type: 'treasureFound', award, adventureId: adventure.id }));
           ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
@@ -683,6 +713,7 @@ function removeForgottenAdventures() {
   });
 
   adventures = adventures.filter(adventure => !forgotten.includes(adventure));
+  forgotten.forEach(adventure => adventureMapPieces.delete(adventure.id));
   debouncedAdventuresSave();
 
   // Drop the maps of the removed adventures from the players and let everybody
@@ -705,7 +736,7 @@ async function spawnAdventure() {
 
   const newAdventure = {
     id: shortUUID(),
-    type: 'treasure1',
+    type: adventureTypes[Math.floor(Math.random() * adventureTypes.length)],
     createDate: dateNow()
   };
 
@@ -718,17 +749,37 @@ async function spawnAdventure() {
   newAdventure.y = treasureLocation.y;
   newAdventure.map = treasureLocation.mapName;
 
-  logWithTimestamp(`Spawning adventure: ${newAdventure.id} ${newAdventure.type} at ${newAdventure.map} (${newAdventure.x}, ${newAdventure.y})`);
+  const pieces = pieceCount(newAdventure);
+  logWithTimestamp(`Spawning adventure: ${newAdventure.id} ${newAdventure.type} at ${newAdventure.map} (${newAdventure.x}, ${newAdventure.y}), map torn into ${pieces}`);
 
+  // Every piece goes to its own tile, otherwise two pieces laying on one tile
+  // would hide each other.
+  const taken = [`${newAdventure.map}:${newAdventure.x},${newAdventure.y}`];
   newAdventure.maps = [];
-  for (let i = 0; i < 1; i++) {
-    const mapLocation = findTile(['Ž', 'R']);
+  for (let i = 0; i < pieces; i++) {
+    let mapLocation = null;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const candidate = findTile(['Ž', 'R']);
+      if (!candidate) {
+        break;
+      }
+      if (!taken.includes(`${candidate.mapName}:${candidate.x},${candidate.y}`)) {
+        mapLocation = candidate;
+        break;
+      }
+    }
     if (!mapLocation) {
-        logWithTimestamp('Could not find a suitable tile to place the adventure map item.');
+        logWithTimestamp('Could not find a free tile to place the adventure map piece.');
         continue;
     }
+    taken.push(`${mapLocation.mapName}:${mapLocation.x},${mapLocation.y}`);
     newAdventure.maps.push({ id: i, map: mapLocation.mapName, x: mapLocation.x, y: mapLocation.y, collectedBy: null });
-    logWithTimestamp(`   > Placing map item at ${mapLocation.mapName} (${mapLocation.x}, ${mapLocation.y})`);
+    logWithTimestamp(`   > Placing map piece ${i} at ${mapLocation.mapName} (${mapLocation.x}, ${mapLocation.y})`);
+  }
+
+  if (newAdventure.maps.length === 0) {
+    logWithTimestamp('No map pieces could be placed, so no adventure was created.');
+    return;
   }
 
   adventures.push(newAdventure);

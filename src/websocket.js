@@ -129,7 +129,7 @@ export function connect() {
         break;
       case 'treasureMapCollected':
         const mapId = `treasureMap_${message.map.adventureId}_${message.map.id}`;
-        localStorage.setItem(mapId, message.imageData);
+        localStorage.setItem(mapId, JSON.stringify({ image: message.imageData, piece: message.piece }));
         console.log(`Stored treasure map ${mapId} in localStorage.`);
         document.getElementById('show-maps-button').style.display = 'block';
         break;
