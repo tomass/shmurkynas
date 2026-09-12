@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs';
 import { parseMapData } from '../shared/mapParser.js';
 import { generateMapImage } from './mapGenerator.js';
-import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval } from '../src/constants.js';
+import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval, adventureAbandonInterval } from '../src/constants.js';
 import { findTile } from '../src/utilies/findTile.js';
 import { initialiseMapData } from '../src/components/Map.js';
 
@@ -45,6 +45,20 @@ function dateNow() {
 
   const formattedLocalTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   return formattedLocalTime;
+}
+
+// Parses a timestamp produced by dateNow() back into a Date. Returns null if
+// the text is missing or malformed.
+function parseDate(text) {
+  if (typeof text !== 'string') {
+    return null;
+  }
+  const parts = text.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+  if (!parts) {
+    return null;
+  }
+  const [, year, month, day, hours, minutes, seconds] = parts.map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds);
 }
 
 export function logWithTimestamp(...args) {
@@ -233,13 +247,14 @@ function sendAdventureMaps(ws = null) {
   }
 }
 
-function removePlayersTreasureMaps(adventureId) {
-  // Remove treasure maps related to the given adventure from all players' collectedMaps
+function removePlayersTreasureMaps(adventureIds) {
+  // Remove treasure maps related to the given adventures from all players' collectedMaps
   for (const player of players.values()) {
     if (player.collectedMaps && player.collectedMaps.length > 0) {
-      player.collectedMaps = player.collectedMaps.filter(mapInfo => mapInfo.adventureId !== adventureId);
+      player.collectedMaps = player.collectedMaps.filter(mapInfo => !adventureIds.includes(mapInfo.adventureId));
     }
   }
+  debouncedSave();
   sendAdventureMaps();
 }
 
@@ -499,7 +514,7 @@ wss.on('connection', async ws => {
           debouncedAdventuresSave();
           ws.send(JSON.stringify({ type: 'treasureFound', award, adventureId: adventure.id }));
           ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
-          removePlayersTreasureMaps(adventure.id);
+          removePlayersTreasureMaps([adventure.id]);
         }
       debouncedSave();
       }
@@ -595,6 +610,73 @@ function spawnCoin() {
     broadcastToAll(message);
 }
 
+// A player who has not connected for adventureAbandonInterval is considered to be
+// gone from the game, so everything he is carrying is lost for the other players.
+function isPlayerGone(playerId) {
+  const player = players.get(playerId);
+  if (!player) {
+    // We do not know this player at all, so whatever he took is lost for good.
+    return true;
+  }
+  if (player.status === 'active') {
+    return false;
+  }
+  const lastAction = parseDate(player.lastAction);
+  if (!lastAction) {
+    // No usable last action time, so we can not say he is still playing.
+    return true;
+  }
+  return Date.now() - lastAction.getTime() >= adventureAbandonInterval;
+}
+
+// A treasure map is lost when it is not laying on the ground any more (only maps
+// with collectedBy === null are shown to the players) and the player who picked
+// it up is gone.
+function isTreasureMapLost(mapInfo) {
+  if (mapInfo.collectedBy === null) {
+    return false;
+  }
+  return isPlayerGone(mapInfo.collectedBy);
+}
+
+// An adventure is forgotten when none of the players can reach its treasure any
+// more, that is when every one of its maps is lost.
+function isAdventureForgotten(adventure) {
+  const adventureMaps = adventure.maps || [];
+  if (adventureMaps.length === 0) {
+    // No maps were placed, so nobody will ever find this treasure.
+    return true;
+  }
+  return adventureMaps.every(isTreasureMapLost);
+}
+
+// Removes adventures nobody can find any more, freeing the place for new ones.
+function removeForgottenAdventures() {
+  const forgotten = adventures.filter(isAdventureForgotten);
+  if (forgotten.length === 0) {
+    return;
+  }
+
+  forgotten.forEach(adventure => {
+    logWithTimestamp(`Removing forgotten adventure: ${adventure.id} ${adventure.type} created ${adventure.createDate} at ${adventure.map} (${adventure.x}, ${adventure.y})`);
+  });
+
+  adventures = adventures.filter(adventure => !forgotten.includes(adventure));
+  debouncedAdventuresSave();
+
+  // Drop the maps of the removed adventures from the players and let everybody
+  // know which adventures are still alive, so old maps are cleaned up.
+  removePlayersTreasureMaps(forgotten.map(adventure => adventure.id));
+  sendActiveAdventures();
+}
+
+// Periodical treasure logic check: first get rid of the adventures nobody can
+// finish any more, then spawn a new one if there is room for it.
+async function checkAdventures() {
+  removeForgottenAdventures();
+  await spawnAdventure();
+}
+
 async function spawnAdventure() {
   if (adventures.length > 0) {
     return;
@@ -634,7 +716,7 @@ async function spawnAdventure() {
 }
 
 const coinInterval = setInterval(spawnCoin, coinAppearanceInterval);
-const adventureInterval = setInterval(spawnAdventure, adventureAppearanceInterval);
+const adventureInterval = setInterval(checkAdventures, adventureAppearanceInterval);
 
 async function gracefulShutdown() {
   logWithTimestamp('Shutting down gracefully...');

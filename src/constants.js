@@ -5,3 +5,4 @@ export const maxCoins = 3;
 export const coinAppearanceProbability = 0.1;
 export const coinAppearanceInterval = 5 * 60 * 1000; // 5 minutes
 export const adventureAppearanceInterval = 30 * 60 * 1000; // 1 hour
+export const adventureAbandonInterval = 7 * 24 * 60 * 60 * 1000; // 7 days
