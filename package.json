@@ -15,7 +15,7 @@
   "dependencies": {
     "canvas": "^3.2.3",
     "easystarjs": "^0.4.4",
-    "three": "^0.184.0",
+    "three": "^0.186.0",
     "uuid": "^14.0.0",
     "ws": "^8.20.0"
   }
