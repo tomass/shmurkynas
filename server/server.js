@@ -526,6 +526,15 @@ wss.on('connection', async ws => {
           debouncedAdventuresSave();
           ws.send(JSON.stringify({ type: 'treasureFound', award, adventureId: adventure.id }));
           ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          // Let the other players see the coins flying, so that they notice
+          // treasures are there to be found.
+          broadcastToOthers(id, JSON.stringify({
+            type: 'treasureDug',
+            map: adventure.map,
+            x: adventure.x,
+            y: adventure.y,
+            name: player.name
+          }));
           removePlayersTreasureMaps([adventure.id]);
         }
       debouncedSave();

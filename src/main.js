@@ -4,6 +4,7 @@ import { Camera } from "./components/Camera";
 import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
 import { map, initialiseMap, initialiseMapData, switchToMap, gamePointsGroup } from "./components/Map";
+import { coinBurstGroup, animateCoinBursts } from "./coinBurst";
 import { otherPlayers, updateOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
 import "./style.css";
@@ -19,6 +20,7 @@ const scene = new THREE.Scene();
 scene.add(player);
 scene.add(map);
 scene.add(otherPlayers);
+scene.add(coinBurstGroup);
 
 const ambientLight = new THREE.AmbientLight();
 scene.add(ambientLight);
@@ -91,6 +93,7 @@ function animate() {
   //animateVehicles();
   animatePlayer();
   animateCoins();
+  animateCoinBursts();
   //hitTest();
 
   renderer.render(scene, camera);

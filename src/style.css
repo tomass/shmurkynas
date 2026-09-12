@@ -73,3 +73,20 @@ body {
   font-size: 20px;
   cursor: pointer;
 }
+
+#playerMoney {
+  /* Inline elements cannot be scaled, so the money needs its own box. */
+  display: inline-block;
+  transform-origin: center;
+}
+
+#playerMoney.money-has-grown {
+  animation: money-has-grown 0.6s ease-out;
+}
+
+@keyframes money-has-grown {
+  0%   { transform: scale(1);   color: white; }
+  25%  { transform: scale(1.6); color: #f6d32d; }
+  60%  { transform: scale(1.1); color: #f6d32d; }
+  100% { transform: scale(1);   color: white; }
+}

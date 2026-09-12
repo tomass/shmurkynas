@@ -99,11 +99,25 @@ export function initializePlayer(x, y, name = playerData.name, money = playerDat
 }
 
 export function updatePlayerMoney(money) {
+  const hasGrown = money > playerData.money;
   playerData.money = money;
   const playerMoneyEl = document.getElementById('playerMoney');
   if (playerMoneyEl) {
     playerMoneyEl.textContent = `€${money}`;
+    if (hasGrown) {
+      flashMoney(playerMoneyEl);
+    }
   }
+}
+
+// Makes the money jump and turn golden for a moment, so that getting richer
+// does not go unnoticed.
+function flashMoney(playerMoneyEl) {
+  playerMoneyEl.classList.remove('money-has-grown');
+  // Reading the size makes the browser notice the class is gone, so the
+  // animation starts from the beginning even if it was still running.
+  void playerMoneyEl.offsetWidth;
+  playerMoneyEl.classList.add('money-has-grown');
 }
 
 export function updatePlayerColour(colour) {

@@ -2,6 +2,8 @@ import { removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
 import { setGamePoints, currentMapName, map } from './components/Map.js';
 import { updatePlayerMoney, playerData } from './components/Player.js';
 import { TreasureMap } from './components/TreasureMap.js';
+import { startCoinBurst } from './coinBurst.js';
+import { playVictorySound } from './sounds.js';
 
 let socket;
 let playerId = null;
@@ -112,7 +114,18 @@ export function connect() {
         break;
       case 'treasureFound':
         console.log(`Congratulations! You found a treasure ${message.adventureId} worth ${message.award}!`);
+        // Show and tell that something good happened, the growing number of
+        // money alone is too easy to miss.
+        startCoinBurst(playerData.x, playerData.y);
+        playVictorySound();
         removeTreasureMaps(message.adventureId);
+        break;
+      case 'treasureDug':
+        console.log(`${message.name} found a treasure at ${message.map} (${message.x}, ${message.y})!`);
+        // Only worth showing if we are standing on the same map.
+        if (message.map === currentMapName) {
+          startCoinBurst(message.x, message.y);
+        }
         break;
       case 'treasureMapCollected':
         const mapId = `treasureMap_${message.map.adventureId}_${message.map.id}`;
