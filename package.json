@@ -1,7 +1,7 @@
 {
   "name": "shmurkynas",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,6 @@
     "canvas": "^3.2.3",
     "easystarjs": "^0.4.4",
     "three": "^0.186.0",
-    "uuid": "^14.0.0",
     "ws": "^8.20.0"
   }
 }

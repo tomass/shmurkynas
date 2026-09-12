@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'fs';
 import { parseMapData } from '../shared/mapParser.js';
 import { generateMapImage } from './mapGenerator.js';
@@ -268,7 +268,19 @@ wss.on('connection', async ws => {
   let id;
 
   ws.on('message', data => {
-    const message = JSON.parse(data.toString());
+    // Anybody can send anything into an open web socket, so a broken message
+    // must be dropped instead of taking the whole game down with it.
+    let message;
+    try {
+      message = JSON.parse(data.toString());
+    } catch (error) {
+      logWithTimestamp('Ignoring a message which is not valid JSON:', error.message);
+      return;
+    }
+    if (message === null || typeof message !== 'object') {
+      logWithTimestamp('Ignoring a message which is not a JSON object:', message);
+      return;
+    }
     logWithTimestamp(`Received message from player:`, message);
 
     // Get current players before adding the new one
@@ -363,7 +375,7 @@ wss.on('connection', async ws => {
       newPlayerMessage = JSON.stringify({ type: 'newPlayer', player: { id, x: playerState.x, y: playerState.y, map: playerState.map, colour: playerState.colour } });
 
     } else if (message.type === 'create') {
-      id = uuidv4();
+      id = randomUUID();
       const x = 3;
       const y = 3; // TODO: calculate empty position!
       // Add the new player to the server state

@@ -5,15 +5,23 @@ import { tileSize } from "./constants";
 import { sendPosition, sendMessage } from "./websocket";
 import { gamePoints, currentMapName } from "./components/Map";
 
-const moveClock = new THREE.Clock(false);
+const moveTimer = new THREE.Timer();
+let movedTime = 0; // seconds already spent on the step being animated now
 
 export function animatePlayer() {
-  if (!movesQueue.length) return;
+  if (!movesQueue.length) {
+    // Standing still: keep forgetting the passing time, so that the next step
+    // does not begin with the whole waiting time already counted into it.
+    moveTimer.reset();
+    movedTime = 0;
+    return;
+  }
 
-  if (!moveClock.running) moveClock.start();
+  moveTimer.update();
+  movedTime += moveTimer.getDelta();
 
   const stepTime = 0.2;
-  const progress = Math.min(1, moveClock.getElapsedTime() / stepTime);
+  const progress = Math.min(1, movedTime / stepTime);
 
   setPosition(progress);
   setRotation(progress);
@@ -28,7 +36,7 @@ export function animatePlayer() {
       sendMessage({ type: 'coinCollected', x: coin.x, y: coin.y, map: currentMapName });
     }
 
-    moveClock.stop();
+    movedTime = 0;
   }
 }
 

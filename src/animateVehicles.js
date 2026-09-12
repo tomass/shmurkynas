@@ -2,10 +2,11 @@ import * as THREE from "three";
 import { mapData } from "./components/Map";
 import { tileSize } from "./constants";
 
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
 
 export function animateVehicles() {
-    const delta = clock.getDelta();
+    timer.update();
+    const delta = timer.getDelta();
 
     // Animate cars and trucks
     /*rows.forEach((rowData) => {
