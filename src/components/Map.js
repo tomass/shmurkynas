@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import { Grass } from "./Grass.js";
 import { Road } from "./Road.js";
 import { Tree } from "./Tree.js";
@@ -21,6 +22,10 @@ export let currentMapName = 'base'; // This should not be required, server sends
 export const map = new THREE.Group();
 export const gamePointsGroup = new THREE.Group();
 map.add(gamePointsGroup);
+
+// The tiles of the drawn map, glued together into a few big meshes. Kept here
+// so that they can be thrown away when another map is drawn.
+let mergedTiles = null;
 
 export function drawGamePoints() {
     gamePointsGroup.remove(...gamePointsGroup.children);
@@ -67,52 +72,126 @@ export function initialiseMap(mapName = 'base') {
   currentPoints = maps[mapName].points;
 
   map.remove(...map.children);
+  disposeMergedTiles();
   map.add(gamePointsGroup);
+
+  // Tiles are built one by one and then glued together. The map does not change
+  // while it is being played, and drawing a few big meshes instead of thousands
+  // of small ones is what keeps the game from eating a whole processor core.
+  const tiles = new THREE.Group();
+  // Active points are left alone, there are only a few of them and they may
+  // need to be changed one by one later.
+  const activePoints = new THREE.Group();
 
   for (let y = 0; y < mapData.length; y++) {
     for (let x = 0; x < mapData[y].length; x++) {
-      addTile(x, y, mapData[y][x]);
+      addTile(tiles, activePoints, x, y, mapData[y][x]);
     }
   }
+
+  mergedTiles = mergeTiles(tiles);
+  if (mergedTiles) {
+    map.add(mergedTiles);
+  } else {
+    // Gluing failed for some reason, so draw the tiles the slow way rather
+    // than showing an empty map.
+    map.add(tiles);
+  }
+  map.add(activePoints);
+
   drawGamePoints();
 }
 
-function addTile(x, y, type) {
+// Glues the tiles into one mesh per look. Tiles that look the same and throw
+// shadows the same way can all live in a single mesh.
+function mergeTiles(tiles) {
+  const groups = new Map();
+
+  tiles.updateMatrixWorld(true);
+  tiles.traverse(object => {
+    if (!object.isMesh) {
+      return;
+    }
+    const material = object.material;
+    const key = [
+      material.type,
+      material.color.getHexString(),
+      material.flatShading,
+      object.castShadow,
+      object.receiveShadow
+    ].join('|');
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        material,
+        castShadow: object.castShadow,
+        receiveShadow: object.receiveShadow,
+        geometries: []
+      });
+    }
+    // Every tile knows its own place, so that place has to be baked into the
+    // shape before the shapes are put together.
+    const geometry = object.geometry.clone();
+    geometry.applyMatrix4(object.matrixWorld);
+    groups.get(key).geometries.push(geometry);
+  });
+
+  const merged = new THREE.Group();
+  for (const group of groups.values()) {
+    const mergedGeometry = BufferGeometryUtils.mergeGeometries(group.geometries, false);
+    group.geometries.forEach(geometry => geometry.dispose());
+    if (!mergedGeometry) {
+      console.error('Could not glue the map tiles together.');
+      merged.children.forEach(mesh => mesh.geometry.dispose());
+      return null;
+    }
+    const mesh = new THREE.Mesh(mergedGeometry, group.material);
+    mesh.castShadow = group.castShadow;
+    mesh.receiveShadow = group.receiveShadow;
+    merged.add(mesh);
+  }
+
+  console.log(`Map tiles glued into ${merged.children.length} meshes.`);
+  return merged;
+}
+
+// Frees the memory of the previously drawn map.
+function disposeMergedTiles() {
+  if (!mergedTiles) {
+    return;
+  }
+  mergedTiles.children.forEach(mesh => {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  });
+  mergedTiles = null;
+}
+
+function addTile(tiles, activePoints, x, y, type) {
   if (type === "G") {
-    const road = Road(x, y);
-    map.add(road);
+    tiles.add(Road(x, y));
   } else if (type === "P") {
-    const building = Building(x, y);
-    map.add(building);
+    tiles.add(Building(x, y));
   } else if (type === "M") {
-    const grass = Grass(x, y);
-    map.add(grass);
-    const tree = Tree(x, y);
-    map.add(tree);
+    tiles.add(Grass(x, y));
+    tiles.add(Tree(x, y));
   } else if (type === "V") {
-    const water = Water(x, y);
-    map.add(water);
+    tiles.add(Water(x, y));
   } else if (type === "R") {
-    const floor = Floor(x, y);
-    map.add(floor);
+    tiles.add(Floor(x, y));
   } else if (type === "K") {
-    const floor = Floor(x, y);
-    map.add(floor);
-    const chair = Chair(x, y);
-    map.add(chair);
+    tiles.add(Floor(x, y));
+    tiles.add(Chair(x, y));
   } else /*(type === "Ž")*/ {
-    const grass = Grass(x, y);
-    map.add(grass);
+    tiles.add(Grass(x, y));
   }
 
   const point = currentPoints.find(p => p.x === x && p.y === y);
   if (point) {
     if (point.type === 'transfer') {
-      const transferPoint = ActivePoint(x, y, 0xffff00);
-      map.add(transferPoint);
+      activePoints.add(ActivePoint(x, y, 0xffff00));
     } else if (point.type === 'living') {
-      const transferPoint = ActivePoint(x, y, 0x00ff00);
-      map.add(transferPoint);
+      activePoints.add(ActivePoint(x, y, 0x00ff00));
     }
   }
 }
