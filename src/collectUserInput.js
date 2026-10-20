@@ -5,6 +5,7 @@ import { currentPoints, switchToMap } from "./components/Map";
 import { findPath, initializePathfinding } from "./utilies/findPath";
 import { sendMessage } from "./websocket";
 import { playerData, updatePlayerMoney } from "./components/Player";
+import { showLivingDialog } from "./livingDialog";
 
 export function collectUserInput(camera, handleZoom) {
     const digButton = document.getElementById('dig-button');
@@ -34,7 +35,13 @@ export function collectUserInput(camera, handleZoom) {
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
 
+    // A tap is only answered when the finger is lifted. While the finger is
+    // still down we cannot yet know whether a second one is on its way, and a
+    // second finger means zooming, not walking.
     window.addEventListener( 'pointerdown', onPointerDown, false );
+    window.addEventListener( 'pointermove', onPointerMove, false );
+    window.addEventListener( 'pointerup', onPointerUp, false );
+    window.addEventListener( 'pointercancel', onPointerCancel, false );
 
     window.addEventListener('wheel', event => {
         const zoomFactor = event.deltaY > 0 ? 1 / 1.1 : 1.1;
@@ -43,6 +50,14 @@ export function collectUserInput(camera, handleZoom) {
 
     let initialTouchDistance = 0;
     let isPinching = false;
+    // Stays true from the moment a second finger lands until the hand leaves
+    // the screen completely, so that the leftovers of a pinch are not mistaken
+    // for a tap.
+    let gestureHadMultiTouch = false;
+    // The tap which is waiting to be answered, remembered from its beginning.
+    let pendingTap = null;
+    // A finger is never as still as a mouse, so a little wandering is forgiven.
+    const tapMoveTolerance = 12;
 
     window.addEventListener('touchstart', event => {
         const settingsDialog = document.getElementById('settings-dialog');
@@ -58,8 +73,16 @@ export function collectUserInput(camera, handleZoom) {
         if (mapViewer.contains(event.target)) {
             return; // Allow default behavior for the dialog
         }
-        if (event.touches.length === 2) {
+        const livingContainer = document.getElementById('living-container');
+        if (livingContainer && livingContainer.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
+        if (event.touches.length >= 2) {
             isPinching = true;
+            gestureHadMultiTouch = true;
+            pendingTap = null;
+        }
+        if (event.touches.length === 2) {
             initialTouchDistance = getTouchDistance(event.touches);
         }
         event.preventDefault();
@@ -79,6 +102,10 @@ export function collectUserInput(camera, handleZoom) {
         if (mapViewer.contains(event.target)) {
             return; // Allow default behavior for the dialog
         }
+        const livingContainer = document.getElementById('living-container');
+        if (livingContainer && livingContainer.contains(event.target)) {
+            return; // Allow default behavior for the dialog
+        }
         if (isPinching && event.touches.length === 2) {
             const currentTouchDistance = getTouchDistance(event.touches);
             const zoomFactor = currentTouchDistance / initialTouchDistance;
@@ -88,9 +115,19 @@ export function collectUserInput(camera, handleZoom) {
         event.preventDefault();
     }, { passive: false });
 
-    window.addEventListener('touchend', () => {
-        isPinching = false;
-    });
+    // One finger lifted from a pinch still leaves the other one on the screen,
+    // so the gesture is only over when the last finger is gone.
+    function onTouchFinished(event) {
+        if (event.touches.length < 2) {
+            isPinching = false;
+        }
+        if (event.touches.length === 0) {
+            gestureHadMultiTouch = false;
+        }
+    }
+
+    window.addEventListener('touchend', onTouchFinished);
+    window.addEventListener('touchcancel', onTouchFinished);
 
     function getTouchDistance(touches) {
         const dx = touches[0].clientX - touches[1].clientX;
@@ -101,11 +138,53 @@ export function collectUserInput(camera, handleZoom) {
     function onPointerDown( event ) {
         const toolbar = document.getElementById('toolbar');
         const settingsContainer = document.getElementById('settings-container');
-        if (toolbar.contains(event.target) || (settingsContainer && settingsContainer.contains(event.target))) {
+        const livingContainer = document.getElementById('living-container');
+        if (toolbar.contains(event.target) ||
+            (settingsContainer && settingsContainer.contains(event.target)) ||
+            (livingContainer && livingContainer.contains(event.target))) {
+            pendingTap = null;
             return;
         }
 
-        if (isPinching) return;
+        if (isPinching || gestureHadMultiTouch) {
+            pendingTap = null;
+            return;
+        }
+
+        pendingTap = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+        };
+    }
+
+    function onPointerMove( event ) {
+        if (!pendingTap || event.pointerId !== pendingTap.pointerId) return;
+        // A finger which is dragged across the screen is not asking the
+        // character to go anywhere.
+        if (Math.abs(event.clientX - pendingTap.x) > tapMoveTolerance ||
+            Math.abs(event.clientY - pendingTap.y) > tapMoveTolerance) {
+            pendingTap = null;
+        }
+    }
+
+    function onPointerCancel( event ) {
+        if (pendingTap && event.pointerId === pendingTap.pointerId) {
+            pendingTap = null;
+        }
+    }
+
+    function onPointerUp( event ) {
+        const tap = pendingTap;
+        pendingTap = null;
+        if (!tap || event.pointerId !== tap.pointerId) return;
+        // The second finger of a zoom also has to be lifted some time, and
+        // that lifting must not send anybody walking.
+        if (isPinching || gestureHadMultiTouch) return;
+        moveToPointer(event);
+    }
+
+    function moveToPointer( event ) {
         // calculate pointer position in normalized device coordinates
         // (-1 to +1) for both components
         pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -121,11 +200,16 @@ export function collectUserInput(camera, handleZoom) {
             y: Math.round(intersect.y / tileSize),
         }
         if (Math.abs(position.x - to.x) <= 1 && Math.abs(position.y - to.y) <= 1) {
-            const clickedPoint = currentPoints.find(p => p.type === "transfer" && p.x === to.x && p.y === to.y);
-            if (clickedPoint) {
+            const clickedPoint = currentPoints.find(p => p.x === to.x && p.y === to.y);
+            if (clickedPoint && clickedPoint.type === "transfer") {
               console.log('transfer to map:', clickedPoint.map, clickedPoint.map_x, clickedPoint.map_y);
               switchToMap(clickedPoint.map, initializePathfinding, clickedPoint.map_x, clickedPoint.map_y);
               sendMessage({ type: 'mapTransfer', map: clickedPoint.map });
+              return;
+            }
+            if (clickedPoint && clickedPoint.type === "living") {
+              // A house is not walked onto, it is bought or knocked on.
+              showLivingDialog(clickedPoint);
               return;
             }
         }
