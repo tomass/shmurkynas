@@ -90,3 +90,54 @@ body {
   60%  { transform: scale(1.1); color: #f6d32d; }
   100% { transform: scale(1);   color: white; }
 }
+
+/* The house dialog: what a free living space costs and who lives in a taken one. */
+#living-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  border: 3px solid #f6d32d;
+  border-radius: 12px;
+  padding: 20px 24px;
+  text-align: center;
+  font-family: sans-serif;
+  font-size: 18px;
+  z-index: 300;
+  max-width: 80vw;
+}
+
+#living-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: #f6d32d;
+}
+
+#living-lines div {
+  margin: 6px 0;
+}
+
+#living-buttons {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+#living-buttons button {
+  font-family: sans-serif;
+  font-size: 18px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #4d4d4d;
+  color: white;
+  cursor: pointer;
+}
+
+#buy-living,
+#enter-living {
+  background: #2ec27e;
+}

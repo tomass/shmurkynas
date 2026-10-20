@@ -6,17 +6,22 @@ import { generateMapImage } from './mapGenerator.js';
 import { tearImage } from './tearMap.js';
 import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval, adventureAbandonInterval } from '../src/constants.js';
 import { findTile } from '../src/utilies/findTile.js';
+import { livingPrice, livingTypeName } from '../shared/livingSpace.js';
 import { initialiseMapData } from '../src/components/Map.js';
 
 const wss = new WebSocketServer({ port: 8088 });
 const PLAYERS_FILE = './players.json';
 const GAMEPOINTS_FILE = './gamePoints.json';
 const ADVENTURES_FILE = './adventures.json';
+const LIVING_FILE = './livingSpaces.json';
 
 const players = new Map();
 let maps = {};
 let serverGamePoints = []; // all game points (comming not from a map) - coins, treasure maps.
 let adventures = [];
+// Living spaces which players have already bought. The map file only says
+// where the living spaces are, who lives in them is remembered here.
+let livingSpaces = [];
 // Torn map pieces of an adventure, kept so the same map is not drawn and torn
 // again for every single piece a player has. Keyed by adventure id.
 const adventureMapPieces = new Map();
@@ -172,6 +177,11 @@ async function saveAdventures() {
   await fs.writeFile(ADVENTURES_FILE, JSON.stringify(adventures, null, 2));
 }
 
+// Save all bought living spaces to file
+async function saveLivingSpaces() {
+  await fs.writeFile(LIVING_FILE, JSON.stringify(livingSpaces, null, 2));
+}
+
 let saveDebounce;
 function debouncedSave() {
   clearTimeout(saveDebounce);
@@ -188,6 +198,12 @@ let saveAdventuresDebounce;
 function debouncedAdventuresSave() {
   clearTimeout(saveAdventuresDebounce);
   saveAdventuresDebounce = setTimeout(saveAdventures, 10000); // Save every 1s max
+}
+
+let saveLivingDebounce;
+function debouncedLivingSave() {
+  clearTimeout(saveLivingDebounce);
+  saveLivingDebounce = setTimeout(saveLivingSpaces, 10000);
 }
 
 // Load players from file on startup
@@ -243,6 +259,58 @@ async function loadAdventures() {
     if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
       logWithTimestamp('Error loading adventures:', err);
     }
+  }
+}
+
+// Load bought living spaces from file on startup
+async function loadLivingSpaces() {
+  try {
+    const data = await fs.readFile(LIVING_FILE, 'utf8');
+    const loaded = JSON.parse(data);
+    livingSpaces = Array.isArray(loaded) ? loaded.filter(space => space && space.owner) : [];
+    logWithTimestamp(`Loaded ${livingSpaces.length} living spaces from file`);
+  } catch (err) {
+    if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+      logWithTimestamp('Error loading living spaces:', err);
+    }
+  }
+}
+
+// The living point of a map, that is the place where a living space can be
+// bought. The map file is the only one who knows where those places are.
+function livingPointAt(mapName, x, y) {
+  const map = maps[mapName];
+  if (!map || !map.points) {
+    return null;
+  }
+  return map.points.find(point => point.type === 'living' && point.x === x && point.y === y) || null;
+}
+
+function boughtLivingSpaceAt(mapName, x, y) {
+  return livingSpaces.find(space => space.map === mapName && space.x === x && space.y === y) || null;
+}
+
+// The living spaces as the players see them: the name of the owner is looked up
+// every time, because a player can rename himself at any moment.
+function livingSpacesForPlayers() {
+  return livingSpaces.map(space => {
+    const owner = players.get(space.owner);
+    return {
+      map: space.map,
+      x: space.x,
+      y: space.y,
+      owner: space.owner,
+      ownerName: owner ? owner.name : 'Nežinomas'
+    };
+  });
+}
+
+function sendLivingSpaces(ws = null) {
+  const message = JSON.stringify({ type: 'livingSpaces', spaces: livingSpacesForPlayers() });
+  if (ws) {
+    ws.send(message);
+  } else {
+    broadcastToAll(message);
   }
 }
 
@@ -319,7 +387,7 @@ function removePlayersTreasureMaps(adventureIds) {
 
 // Load initial data
 (async () => {
-    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints(), loadAdventures()]);
+    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints(), loadAdventures(), loadLivingSpaces()]);
 })();
 
 wss.on('connection', async ws => {
@@ -403,6 +471,7 @@ wss.on('connection', async ws => {
         colour: playerState.colour,
         players: allPlayers,
         gamePoints: serverGamePoints,
+        livingSpaces: livingSpacesForPlayers(),
         lastAction: dateNow()
       }));
 
@@ -437,7 +506,8 @@ wss.on('connection', async ws => {
         money: playerState.money,
         colour: playerState.colour,
         players: allPlayers,
-        gamePoints: serverGamePoints
+        gamePoints: serverGamePoints,
+        livingSpaces: livingSpacesForPlayers()
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
@@ -505,6 +575,12 @@ wss.on('connection', async ws => {
         // Broadcast the settings change to all other clients
         const updateMessage = JSON.stringify({ type: 'playerUpdated', id, name: message.name, colour: message.colour });
         broadcastToOthers(id, updateMessage);
+
+        // The name of a home owner is shown to everybody, so a renamed owner
+        // has to be told about.
+        if (livingSpaces.some(space => space.owner === id)) {
+          sendLivingSpaces();
+        }
       }
     } else if (message.type === 'mapTransfer') {
       // TODO: Thiw should not be required, as map is sent in 'move' message
@@ -540,6 +616,65 @@ wss.on('connection', async ws => {
           // Send current coin state to the player.
           const coinsUpdateMessage = JSON.stringify({ type: 'updateGamePoints', gamePoints: serverGamePoints });
           ws.send(coinsUpdateMessage);
+        }
+      }
+    } else if (message.type === 'buyLiving') {
+      const player = players.get(id);
+      if (player) {
+        const point = livingPointAt(message.map, message.x, message.y);
+        const taken = point && boughtLivingSpaceAt(message.map, message.x, message.y);
+        const price = point ? livingPrice(point) : null;
+        // The player has to stand next to the house he is buying, exactly like
+        // he has to walk up to a transfer point to use it.
+        const isNear = player.map === message.map &&
+          Math.abs(player.x - message.x) <= 1 &&
+          Math.abs(player.y - message.y) <= 1;
+
+        let refusal = null;
+        if (!point) {
+          refusal = 'Čia nėra gyvenamosios vietos.';
+        } else if (taken) {
+          refusal = 'Šią vietą jau nupirko kitas žaidėjas.';
+        } else if (price === null) {
+          refusal = 'Ši vieta neparduodama.';
+        } else if (!isNear) {
+          refusal = 'Reikia prieiti arčiau.';
+        } else if (player.money < price) {
+          refusal = `Trūksta pinigų, reikia €${price}.`;
+        }
+
+        if (refusal) {
+          logWithTimestamp(`Player ${id} could not buy a living space at ${message.map} (${message.x}, ${message.y}): ${refusal}`);
+          ws.send(JSON.stringify({ type: 'buyLivingFailed', reason: refusal }));
+          // Whatever the player believed, let him see how things really are.
+          ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          sendLivingSpaces(ws);
+        } else {
+          player.money -= price;
+          player.lastAction = dateNow();
+          livingSpaces.push({
+            map: message.map,
+            x: message.x,
+            y: message.y,
+            type: point.livingType,
+            price,
+            owner: id,
+            boughtDate: dateNow()
+          });
+          debouncedLivingSave();
+          debouncedSave();
+          logWithTimestamp(`Player ${id} bought ${livingTypeName(point.livingType)} at ${message.map} (${message.x}, ${message.y}) for €${price}`);
+
+          ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          ws.send(JSON.stringify({
+            type: 'livingBought',
+            map: message.map,
+            x: message.x,
+            y: message.y,
+            price
+          }));
+          // Everybody has to see the lightbulb of that house turn blue.
+          sendLivingSpaces();
         }
       }
     } else if (message.type === 'digging') {
@@ -805,7 +940,8 @@ async function gracefulShutdown() {
     await Promise.all([
       savePlayers(),
       saveGamePoints(),
-      saveAdventures()
+      saveAdventures(),
+      saveLivingSpaces()
     ]);
     logWithTimestamp('All data saved.');
   } catch (err) {

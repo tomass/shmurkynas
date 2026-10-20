@@ -32,7 +32,7 @@ export function parseMapData(text) {
           const type = pointEntries[i].replace(':', '').trim();
 
           const attributes = pointEntries[i + 1].trim().split('\n');
-          const point = { type };
+          const point = {};
           attributes.forEach(attr => {
             const [key, value] = attr.split('=');
             if (key) {
@@ -44,6 +44,14 @@ export function parseMapData(text) {
               point[key.trim()] = isNaN(trimmedValue) || trimmedValue === '' ? trimmedValue : Number(trimmedValue);
             }
           });
+          // Whether this is a transfer or a living point is told by the line
+          // which starts it. A living point also has a type of its own - flat1,
+          // house1 and so on - which would otherwise take the place of the kind
+          // of the point, so it is kept under its own name.
+          if (point.type !== undefined) {
+            point.livingType = point.type;
+          }
+          point.type = type;
           points.push(point);
         }
       }

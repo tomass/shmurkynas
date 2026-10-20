@@ -1,9 +1,11 @@
 import { removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
-import { setGamePoints, currentMapName, map } from './components/Map.js';
+import { setGamePoints, currentMapName, map, refreshLivingPoints } from './components/Map.js';
 import { updatePlayerMoney, playerData } from './components/Player.js';
 import { TreasureMap } from './components/TreasureMap.js';
 import { startCoinBurst } from './coinBurst.js';
 import { playVictorySound } from './sounds.js';
+import { setLivingSpaces, setMyPlayerId } from './livingSpaces.js';
+import { livingBought, livingSpacesChanged, showLivingMessage } from './livingDialog.js';
 
 let socket;
 let playerId = null;
@@ -80,6 +82,10 @@ export function connect() {
         playerId = message.id;
         localStorage.setItem('playerId', playerId);
         setGamePoints(message.gamePoints);
+        // The houses have to be known before the map is drawn, otherwise the
+        // lightbulbs would all start green.
+        setMyPlayerId(playerId);
+        setLivingSpaces(message.livingSpaces);
         const gameInitEvent = new CustomEvent('game-init', { detail: message });
         window.dispatchEvent(gameInitEvent);
         break;
@@ -108,6 +114,17 @@ export function connect() {
         if (message.id !== playerId) {
           updateOtherPlayer(message);
         }
+        break;
+      case 'livingSpaces':
+        setLivingSpaces(message.spaces);
+        refreshLivingPoints();
+        livingSpacesChanged();
+        break;
+      case 'livingBought':
+        livingBought(message);
+        break;
+      case 'buyLivingFailed':
+        showLivingMessage(message.reason);
         break;
       case 'updateMoney':
         updatePlayerMoney(message.money);

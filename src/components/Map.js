@@ -13,6 +13,8 @@ import { Chair } from "./Chair.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition.js";
 import { initializePlayer } from "./Player.js";
 import { updateAllOtherPlayers } from "../otherPlayers.js";
+import { isLivingOccupied } from "../livingSpaces.js";
+import { livingFreeColour, livingOccupiedColour } from "../constants.js";
 
 export let maps = {}; // Data of ALL maps
 export let mapData = []; // data of the CURRENT map being rendered
@@ -26,6 +28,11 @@ map.add(gamePointsGroup);
 // The tiles of the drawn map, glued together into a few big meshes. Kept here
 // so that they can be thrown away when another map is drawn.
 let mergedTiles = null;
+
+// The lightbulbs and other active points of the drawn map. They are kept apart
+// from the glued tiles, because a single one of them may need to be changed,
+// for example when somebody buys a house.
+let activePointsGroup = null;
 
 export function drawGamePoints() {
     gamePointsGroup.remove(...gamePointsGroup.children);
@@ -82,6 +89,7 @@ export function initialiseMap(mapName = 'base') {
   // Active points are left alone, there are only a few of them and they may
   // need to be changed one by one later.
   const activePoints = new THREE.Group();
+  activePointsGroup = activePoints;
 
   for (let y = 0; y < mapData.length; y++) {
     for (let x = 0; x < mapData[y].length; x++) {
@@ -191,9 +199,28 @@ function addTile(tiles, activePoints, x, y, type) {
     if (point.type === 'transfer') {
       activePoints.add(ActivePoint(x, y, 0xffff00));
     } else if (point.type === 'living') {
-      activePoints.add(ActivePoint(x, y, 0x00ff00));
+      const occupied = isLivingOccupied(currentMapName, x, y);
+      const bulb = ActivePoint(x, y, occupied ? livingOccupiedColour : livingFreeColour);
+      bulb.userData.living = { x, y };
+      activePoints.add(bulb);
     }
   }
+}
+
+// Repaints the lightbulbs of the living buildings: green while nobody lives
+// there, blue once somebody has bought the place.
+export function refreshLivingPoints() {
+  if (!activePointsGroup) {
+    return;
+  }
+  activePointsGroup.children.forEach(bulb => {
+    const living = bulb.userData.living;
+    if (!living) {
+      return;
+    }
+    const occupied = isLivingOccupied(currentMapName, living.x, living.y);
+    bulb.material.color.set(occupied ? livingOccupiedColour : livingFreeColour);
+  });
 }
 
 export function switchToMap(mapName, initializePathfinding, map_x, map_y) {
