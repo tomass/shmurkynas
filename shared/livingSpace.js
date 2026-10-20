@@ -8,9 +8,15 @@ const livingTypeNames = {
   house2: 'Didelis namas',
 };
 
-// A living space is remembered by the map it is on and its place in that map.
-export function livingKey(mapName, x, y) {
-  return `${mapName}:${x},${y}`;
+// A living space is remembered by the id its point has in the map file. That
+// id never changes, so the child who bought a flat keeps it even when the
+// house is later drawn somewhere else. Old map files have no ids yet, so for
+// such a point the map and the place still have to do.
+export function livingKey(mapName, point) {
+  if (point && point.id) {
+    return `id:${point.id}`;
+  }
+  return `place:${mapName}:${point ? point.x : ''},${point ? point.y : ''}`;
 }
 
 // What a living space costs. The map can name its own price for a single

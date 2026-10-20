@@ -72,17 +72,38 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 - In map file tiles are stored with 0,0 on the top as this is more natural to human,
   who is draing a map.
 - When map tiles are loaded into the game, y axis is reversed, making 0,0 at bottom, so
-  when loading we have to change game_y = map file height - 1 - map_file_y.
-- Path finder (easy star js) is using whatever coordinates are fed to him, in our
-  case it is game coordinates, that is with 0,0 at the bottom left.
+  when loading we have to change game_y = map file height - 1 - map_file_y + origin_y.
+- **Origin**: a map can be extended in any direction, which would move every tile
+  inside the tile array and so change the place of everything the server remembers
+  (coins, treasures, bought living spaces, players). To stop that, a map carries
+  `origin_x` and `origin_y` - the place of its lower left tile in the world,
+  0 when they are not written in the map file. Extending a map on the left or at
+  the bottom only lowers the origin, so world coordinates never move; see the four
+  rules the map editor follows in `shared/mapCoords.js`. World coordinates can be
+  negative and the game speaks them everywhere: the only place the tile array is
+  reached is through `toIndex`/`toWorld`/`tileAt` of `shared/mapCoords.js`.
+- Path finder (easy star js) is using the tile array, so `findPath` moves the places
+  it is asked about by the origin on the way in and the path it answers on the way out.
+- Everything which lays on the ground is looked over when the server starts
+  (`validateStoredPlaces`): coins and treasures which ended up in a tree, a house or
+  the water are removed, uncollected treasure map pieces are moved elsewhere, and
+  players are taken out of walls.
 
 ### **Setup file example**
 - Setup file consists of multiple maps, all of which have such components:
 - [map=base] where base is the name of the map
-- section with map attributes, for example line: type=public
+- section with map attributes, for example lines: type=public, origin_x=-10, origin_y=-6
+- point coordinates (x, y of a point and map_x, map_y of a transfer point) are
+  written down the way the map is drawn - counted from its left and from its top -
+  the game turns them into world coordinates while loading
 - [tiles] followed by a character matrix of tile type characters like ŽGMPV.
 - [points] lists points in that map
 - each point starts with a text "transfer:" for transfer points and "living:" for living points
+- every living point carries an `id=` (for example id=base-flat-01), which never changes
+  and is never reused: who bought that living space is remembered by this id in
+  livingSpaces.json, so the owner keeps his home even when the house is drawn
+  somewhere else. A living point without an id still works - it is then remembered
+  by its place, the way it used to be - but the server warns about it on startup.
 - after point type all attributes are listed on a separate line, like.
 - default map file in this format can be found in public/base.map
 

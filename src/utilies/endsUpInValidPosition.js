@@ -1,20 +1,26 @@
 import { calculateFinalPosition } from "./calculateFinalPosition.js";
-import { mapData } from "../components/Map.js";
+import { mapData, currentOrigin } from "../components/Map.js";
 
 export function endsUpInValidPosition(currentPosition, moves) {
   const finalPosition = calculateFinalPosition(currentPosition, moves);
+  // The player walks in the world, the tiles lay in an array, so the place he
+  // would end up in has to be looked for where that tile really is.
+  const index = {
+    x: finalPosition.x - currentOrigin.x,
+    y: finalPosition.y - currentOrigin.y
+  };
 
   if (
-    finalPosition.x === -1 ||
-    finalPosition.y === -1 ||
-    finalPosition.x === mapData[0].length ||
-    finalPosition.y === mapData.length
+    index.x < 0 ||
+    index.y < 0 ||
+    index.x >= mapData[0].length ||
+    index.y >= mapData.length
   ) {
     return false;
   }
-  if (mapData[finalPosition.y][finalPosition.x] === "M" ||
-      mapData[finalPosition.y][finalPosition.x] === "P" ||
-      mapData[finalPosition.y][finalPosition.x] === "V"
+  if (mapData[index.y][index.x] === "M" ||
+      mapData[index.y][index.x] === "P" ||
+      mapData[index.y][index.x] === "V"
   ) return false;
 
   return true;

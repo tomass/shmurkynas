@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import { tileSize } from "../constants.js";
-import { mapData } from "./Map.js";
 
-export function ActivePoint(x, y, colour) {
+// x and y are the place of the point in the world, tile is the kind of tile it
+// is standing on - a lightbulb on a house has to hang higher than one standing
+// on the grass.
+export function ActivePoint(x, y, colour, tile) {
     const point = new THREE.Mesh(
         new THREE.CapsuleGeometry(5, 8, 4, 4),
         new THREE.MeshLambertMaterial({
@@ -10,7 +12,7 @@ export function ActivePoint(x, y, colour) {
             flatShading: true,
         })
     );
-    if (mapData[y][x] === 'P') {
+    if (tile === 'P') {
         // Put lightbulb higher above the building
         point.position.z = 50;
     } else {

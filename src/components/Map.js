@@ -15,9 +15,14 @@ import { initializePlayer } from "./Player.js";
 import { updateAllOtherPlayers } from "../otherPlayers.js";
 import { isLivingOccupied } from "../livingSpaces.js";
 import { livingFreeColour, livingOccupiedColour } from "../constants.js";
+import { mapOrigin, toWorld, toIndex } from "../../shared/mapCoords.js";
 
 export let maps = {}; // Data of ALL maps
 export let mapData = []; // data of the CURRENT map being rendered
+// Where the lower left tile of the CURRENT map stands in the world. Everything
+// but mapData itself speaks world coordinates, so this is what turns one into
+// the other, see shared/mapCoords.js.
+export let currentOrigin = { x: 0, y: 0 };
 export let currentPoints = []; // active points of the CURRENT map being rendered
 export let gamePoints = []; // list of all game points (coins, treasure maps, etc) on all maps
 export let currentMapName = 'base'; // This should not be required, server sends our initial map and position
@@ -63,8 +68,16 @@ export function initialiseMapData(downloadedMaps) {
     // Set initial mapData for other modules that might need it before rendering
     console.log('!!!!!!!!!!!!!!!!!!!!!! reversing here, this should not be required anymore !!!!!!!!!!!!!!!!!!!!!!');
     mapData = [...maps['base'].tiles].reverse();
+    currentOrigin = mapOrigin(maps['base']);
     currentPoints = maps['base'].points;
   }
+}
+
+// The tile standing at a place in the world of the map being played now.
+export function currentTileAt(x, y) {
+  const index = toIndex({ origin: currentOrigin }, x, y);
+  const row = mapData[index.y];
+  return row ? row[index.x] : undefined;
 }
 
 // This function replaces the old `initialiseMap` and will render the map.
@@ -76,6 +89,7 @@ export function initialiseMap(mapName = 'base') {
   // Update mapData to the one being rendered.
   currentMapName = mapName;
   mapData = [...maps[mapName].tiles];
+  currentOrigin = mapOrigin(maps[mapName]);
   currentPoints = maps[mapName].points;
 
   map.remove(...map.children);
@@ -91,9 +105,13 @@ export function initialiseMap(mapName = 'base') {
   const activePoints = new THREE.Group();
   activePointsGroup = activePoints;
 
-  for (let y = 0; y < mapData.length; y++) {
-    for (let x = 0; x < mapData[y].length; x++) {
-      addTile(tiles, activePoints, x, y, mapData[y][x]);
+  // The tiles are drawn where they stand in the world, not where they happen
+  // to lay in the array, so that extending a map does not move anything which
+  // is already there.
+  for (let row = 0; row < mapData.length; row++) {
+    for (let col = 0; col < mapData[row].length; col++) {
+      const place = toWorld(maps[mapName], col, row);
+      addTile(tiles, activePoints, place.x, place.y, mapData[row][col]);
     }
   }
 
@@ -197,11 +215,13 @@ function addTile(tiles, activePoints, x, y, type) {
   const point = currentPoints.find(p => p.x === x && p.y === y);
   if (point) {
     if (point.type === 'transfer') {
-      activePoints.add(ActivePoint(x, y, 0xffff00));
+      activePoints.add(ActivePoint(x, y, 0xffff00, type));
     } else if (point.type === 'living') {
-      const occupied = isLivingOccupied(currentMapName, x, y);
-      const bulb = ActivePoint(x, y, occupied ? livingOccupiedColour : livingFreeColour);
-      bulb.userData.living = { x, y };
+      const occupied = isLivingOccupied(currentMapName, point);
+      const bulb = ActivePoint(x, y, occupied ? livingOccupiedColour : livingFreeColour, type);
+      // The lightbulb remembers the point itself, because who lives in a house
+      // is known by the id of its point, not by the place it is drawn at.
+      bulb.userData.living = point;
       activePoints.add(bulb);
     }
   }
@@ -218,33 +238,35 @@ export function refreshLivingPoints() {
     if (!living) {
       return;
     }
-    const occupied = isLivingOccupied(currentMapName, living.x, living.y);
+    const occupied = isLivingOccupied(currentMapName, living);
     bulb.material.color.set(occupied ? livingOccupiedColour : livingFreeColour);
   });
 }
 
 export function switchToMap(mapName, initializePathfinding, map_x, map_y) {
   if (maps[mapName]) {
-    const newMapData = maps[mapName].tiles;
+    const newMap = maps[mapName];
+    const newMapData = newMap.tiles;
     let newPosition;
     console.log('switching to map:', mapName, map_x, map_y);
     if (map_x === undefined || map_y === undefined) {
       // This should not be happening if map data is captured correctly and
       // all transfer points have map and position defined.
       console.log('No map_x or map_y provided, finding first walkable position.');
-      newPosition = findFirstWalkablePosition(newMapData);
+      // findFirstWalkablePosition reads the tile array, which is already the
+      // right way up, so its answer only has to be moved by the origin.
+      const free = findFirstWalkablePosition(newMapData);
+      newPosition = free ? toWorld(newMap, free.x, free.y) : null;
     } else {
-      newPosition = { x: map_x, y: map_y };
+      // map_x and map_y are written down the way the map a transfer point
+      // leads to is drawn: counted from its left and from its top. Only now,
+      // knowing that map, can they be turned into a place in the world.
+      newPosition = toWorld(newMap, map_x, newMapData.length - 1 - map_y);
     }
 
     if (newPosition) {
-      // The y-coordinate needs to be inverted because the findFirstWalkablePosition
-      // works with the raw tile data, where y=0 is the top.
-      // The player's logical position has y=0 at the bottom.
-      const logicalY = newMapData.length - 1 - newPosition.y;
-
       initialiseMap(mapName);
-      initializePlayer(newPosition.x, logicalY);
+      initializePlayer(newPosition.x, newPosition.y);
       initializePathfinding(); // Re-initialize pathfinding with the new map
       updateAllOtherPlayers(); // Update visibility of other players on the new map
     } else {

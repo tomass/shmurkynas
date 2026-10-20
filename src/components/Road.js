@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import { tileSize } from "../constants.js";
-import { mapData } from "../components/Map.js";
+import { currentTileAt } from "../components/Map.js";
 
+// x and y are the place of the road in the world. Which way the dash on it
+// lays is told by the roads standing next to it.
 export function Road(x, y) {
     const road = new THREE.Group();
     road.position.x = x * tileSize;
@@ -14,8 +16,8 @@ export function Road(x, y) {
     foundation.receiveShadow = true;
     road.add(foundation);
 
-    if ((mapData[y][x-1] === 'G') ||
-        (mapData[y][x+1] === 'G')) {
+    if ((currentTileAt(x - 1, y) === 'G') ||
+        (currentTileAt(x + 1, y) === 'G')) {
       const dash = new THREE.Mesh(
         new THREE.PlaneGeometry(10, 2, 2),
         new THREE.MeshLambertMaterial({ color: 0xeeeeee })

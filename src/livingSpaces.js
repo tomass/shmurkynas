@@ -14,19 +14,20 @@ export function setMyPlayerId(id) {
 export function setLivingSpaces(spaces) {
   boughtSpaces.clear();
   (spaces || []).forEach(space => {
-    boughtSpaces.set(livingKey(space.map, space.x, space.y), space);
+    boughtSpaces.set(livingKey(space.map, space), space);
   });
 }
 
-export function livingSpaceOwner(mapName, x, y) {
-  return boughtSpaces.get(livingKey(mapName, x, y)) || null;
+// point is the living point of the map, which knows its id and its place.
+export function livingSpaceOwner(mapName, point) {
+  return boughtSpaces.get(livingKey(mapName, point)) || null;
 }
 
-export function isLivingOccupied(mapName, x, y) {
-  return Boolean(livingSpaceOwner(mapName, x, y));
+export function isLivingOccupied(mapName, point) {
+  return Boolean(livingSpaceOwner(mapName, point));
 }
 
-export function isMyLivingSpace(mapName, x, y) {
-  const space = livingSpaceOwner(mapName, x, y);
+export function isMyLivingSpace(mapName, point) {
+  const space = livingSpaceOwner(mapName, point);
   return Boolean(space && myId && space.owner === myId);
 }

@@ -72,8 +72,8 @@ export function showLivingDialog(point) {
   shownPoint = point;
 
   const price = livingPrice(point);
-  const space = livingSpaceOwner(currentMapName, point.x, point.y);
-  const isMine = isMyLivingSpace(currentMapName, point.x, point.y);
+  const space = livingSpaceOwner(currentMapName, point);
+  const isMine = isMyLivingSpace(currentMapName, point);
   const canEnter = isMine && Boolean(point.map) && Boolean(maps[point.map]);
 
   titleEl.textContent = livingTypeName(point.livingType);
@@ -130,7 +130,9 @@ function buyShownLivingSpace() {
   // Asked for once is enough, from here on the server is the one who counts the
   // money and hands out the house.
   shownPoint = null;
-  sendMessage({ type: 'buyLiving', map: currentMapName, x: point.x, y: point.y });
+  // The id says which house is being bought, the place is sent along so the
+  // server can see that the player is really standing next to it.
+  sendMessage({ type: 'buyLiving', id: point.id, map: currentMapName, x: point.x, y: point.y });
   buyButton.style.display = 'none';
   enterButton.style.display = 'none';
   setLines(['Perkame...']);

@@ -6,7 +6,8 @@ import { generateMapImage } from './mapGenerator.js';
 import { tearImage } from './tearMap.js';
 import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval, adventureAbandonInterval } from '../src/constants.js';
 import { findTile } from '../src/utilies/findTile.js';
-import { livingPrice, livingTypeName } from '../shared/livingSpace.js';
+import { tileAt, toIndex } from '../shared/mapCoords.js';
+import { livingKey, livingPrice, livingTypeName } from '../shared/livingSpace.js';
 import { initialiseMapData } from '../src/components/Map.js';
 
 const wss = new WebSocketServer({ port: 8088 });
@@ -30,6 +31,16 @@ const adventureMapPieces = new Map();
 // many pieces the treasure map is torn.
 const adventureTypes = ['treasure1', 'treasure2', 'treasure4'];
 
+// Where a coin may lay, and where a treasure or a piece of a treasure map may
+// be hidden. The same kinds of tile are used when something new is put onto a
+// map and when the things already remembered are looked over, see
+// validateStoredPlaces.
+const coinTiles = ['Ž'];
+const treasureTiles = ['Ž', 'R'];
+// Tiles a player can not stand on. The browser forbids walking onto them in
+// endsUpInValidPosition, these are the very same ones.
+const unwalkableTiles = ['M', 'P', 'V'];
+
 function pieceCount(adventure) {
   const count = Number(String(adventure.type).replace('treasure', ''));
   return Number.isFinite(count) && count > 0 ? count : 1;
@@ -47,7 +58,10 @@ async function getAdventureMapPieces(adventure) {
     logWithTimestamp(`Cannot draw a treasure map, map '${adventure.map}' is not known.`);
     return null;
   }
-  const whole = await generateMapImage(mapData.tiles, adventure.x, adventure.y);
+  // The picture is drawn out of the tile array, so the place of the treasure
+  // has to be turned from the world into that array first.
+  const treasure = toIndex(mapData, adventure.x, adventure.y);
+  const whole = await generateMapImage(mapData.tiles, treasure.x, treasure.y);
   const pieces = await tearImage(whole, pieceCount(adventure), adventure.id);
   adventureMapPieces.set(adventure.id, pieces);
   return pieces;
@@ -286,19 +300,55 @@ function livingPointAt(mapName, x, y) {
   return map.points.find(point => point.type === 'living' && point.x === x && point.y === y) || null;
 }
 
-function boughtLivingSpaceAt(mapName, x, y) {
-  return livingSpaces.find(space => space.map === mapName && space.x === x && space.y === y) || null;
+// The living point with this id, wherever it is drawn. This is how a bought
+// living space finds its house again: the place may change, the id does not.
+function livingPointById(id) {
+  if (!id) {
+    return null;
+  }
+  for (const [mapName, map] of Object.entries(maps)) {
+    const point = (map.points || []).find(p => p.type === 'living' && p.id === id);
+    if (point) {
+      return { point, mapName };
+    }
+  }
+  return null;
 }
 
-// The living spaces as the players see them: the name of the owner is looked up
-// every time, because a player can rename himself at any moment.
+// The house a bought living space belongs to, together with the map it is on.
+// A space bought before the map file had ids - and never matched to a point
+// since - is still found by its place.
+function livingPointOf(space) {
+  const byId = livingPointById(space.id);
+  if (byId) {
+    return byId;
+  }
+  const point = livingPointAt(space.map, space.x, space.y);
+  return point ? { point, mapName: space.map } : null;
+}
+
+// Is this house already bought? Asked with the point of the map, so the id is
+// what decides.
+function boughtLivingSpaceOf(mapName, point) {
+  if (!point) {
+    return null;
+  }
+  const key = livingKey(mapName, point);
+  return livingSpaces.find(space => livingKey(space.map, space) === key) || null;
+}
+
+// The living spaces as the players see them: the name of the owner is looked
+// up every time, because a player can rename himself at any moment, and so is
+// the place of the house, which the map file may have moved.
 function livingSpacesForPlayers() {
   return livingSpaces.map(space => {
     const owner = players.get(space.owner);
+    const home = livingPointOf(space);
     return {
-      map: space.map,
-      x: space.x,
-      y: space.y,
+      id: space.id,
+      map: home ? home.mapName : space.map,
+      x: home ? home.point.x : space.x,
+      y: home ? home.point.y : space.y,
       owner: space.owner,
       ownerName: owner ? owner.name : 'Nežinomas'
     };
@@ -385,9 +435,197 @@ function removePlayersTreasureMaps(adventureIds) {
   sendAdventureMaps();
 }
 
+// Is this place on this map a tile of one of the given kinds? A place outside
+// the map, or on a map which is not there any more, is not.
+function placeIsOneOf(mapName, x, y, allowed) {
+  const tile = tileAt(maps[mapName], x, y);
+  return tile !== undefined && allowed.includes(tile);
+}
+
+function placeIsWalkable(mapName, x, y) {
+  const tile = tileAt(maps[mapName], x, y);
+  return tile !== undefined && !unwalkableTiles.includes(tile);
+}
+
+// The closest place to the given one a player can stand on - the place itself
+// when it is free. Used to get a player out of a wall he never walked into and
+// to find a corner for a player who has just joined the game.
+function nearestWalkablePlace(mapName, x, y) {
+  const map = maps[mapName];
+  if (!map || !map.tiles.length) {
+    return null;
+  }
+  const furthest = map.tiles.length + map.tiles[0].length;
+  for (let ring = 0; ring <= furthest; ring++) {
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        // Only the edge of the ring is new, everything inside it has already
+        // been looked at.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) {
+          continue;
+        }
+        if (placeIsWalkable(mapName, x + dx, y + dy)) {
+          return { x: x + dx, y: y + dy };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// The maps are drawn by hand and they keep growing: a tile which was grass
+// yesterday can be a house today, and a map can be extended in any direction.
+// Anything remembered on such a tile would lay there forever, out of reach of
+// the children - and a coin stuck inside a tree still takes up one of the very
+// few places a coin may have. So everything the files remember is looked over
+// once the maps have been read.
+async function validateStoredPlaces() {
+  // Coins are the cheapest thing in the game, a lost one simply appears
+  // somewhere else a few minutes later.
+  const lostCoins = serverGamePoints.filter(point =>
+    point.type === 'coin' && !placeIsOneOf(point.map, point.x, point.y, coinTiles));
+  lostCoins.forEach(coin => {
+    logWithTimestamp(`Removing a coin which can not be reached any more at ${coin.map} (${coin.x}, ${coin.y})`);
+  });
+  if (lostCoins.length > 0) {
+    serverGamePoints = serverGamePoints.filter(point => !lostCoins.includes(point));
+  }
+
+  // A treasure inside a house can never be dug out, so the whole adventure
+  // goes - with all its pieces, which are of no use without the treasure.
+  const lostAdventures = adventures.filter(adventure =>
+    !placeIsOneOf(adventure.map, adventure.x, adventure.y, treasureTiles));
+  lostAdventures.forEach(adventure => {
+    logWithTimestamp(`Removing adventure ${adventure.id} ${adventure.type}: its treasure at ${adventure.map} (${adventure.x}, ${adventure.y}) can not be dug out any more`);
+    adventureMapPieces.delete(adventure.id);
+  });
+  if (lostAdventures.length > 0) {
+    adventures = adventures.filter(adventure => !lostAdventures.includes(adventure));
+  }
+
+  // A piece of a treasure map which nobody has picked up yet is only laying
+  // around, so it is simply moved to another place instead of spoiling the
+  // whole adventure for the children who already carry the other pieces.
+  let piecesMoved = 0;
+  adventures.forEach(adventure => {
+    const taken = (adventure.maps || [])
+      .map(piece => `${piece.map}:${piece.x},${piece.y}`)
+      .concat(`${adventure.map}:${adventure.x},${adventure.y}`);
+    (adventure.maps || []).forEach(piece => {
+      if (piece.collectedBy !== null) {
+        return;
+      }
+      if (placeIsOneOf(piece.map, piece.x, piece.y, treasureTiles)) {
+        return;
+      }
+      let newPlace = null;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = findTile(treasureTiles);
+        if (!candidate) {
+          break;
+        }
+        if (!taken.includes(`${candidate.mapName}:${candidate.x},${candidate.y}`)) {
+          newPlace = candidate;
+          break;
+        }
+      }
+      if (!newPlace) {
+        logWithTimestamp(`Could not find a new place for map piece ${piece.id} of adventure ${adventure.id}, leaving it where it is`);
+        return;
+      }
+      logWithTimestamp(`Moving map piece ${piece.id} of adventure ${adventure.id} from ${piece.map} (${piece.x}, ${piece.y}) to ${newPlace.mapName} (${newPlace.x}, ${newPlace.y})`);
+      piece.map = newPlace.mapName;
+      piece.x = newPlace.x;
+      piece.y = newPlace.y;
+      taken.push(`${newPlace.mapName}:${newPlace.x},${newPlace.y}`);
+      piecesMoved++;
+    });
+  });
+
+  // A player who was left standing in a wall could not take a single step any
+  // more, so he is put onto the closest place he could have walked to.
+  let playersMoved = 0;
+  for (const player of players.values()) {
+    if (placeIsWalkable(player.map, player.x, player.y)) {
+      continue;
+    }
+    const mapName = maps[player.map] ? player.map : 'base';
+    const place = nearestWalkablePlace(mapName, player.x, player.y);
+    if (!place) {
+      logWithTimestamp(`Player ${player.id} is standing at ${player.map} (${player.x}, ${player.y}), where nobody can stand, and no free place was found`);
+      continue;
+    }
+    logWithTimestamp(`Moving player ${player.id} away from ${player.map} (${player.x}, ${player.y}), where nobody can stand any more, to ${mapName} (${place.x}, ${place.y})`);
+    player.map = mapName;
+    player.x = place.x;
+    player.y = place.y;
+    playersMoved++;
+  }
+
+  // Living points should all carry an id, that is what ownership hangs on.
+  // One without an id still works - it is remembered by its place, the way it
+  // used to be - but it is a map file waiting to lose somebody's home, so it
+  // is said out loud once.
+  for (const [mapName, map] of Object.entries(maps)) {
+    const nameless = (map.points || []).filter(point => point.type === 'living' && !point.id);
+    if (nameless.length > 0) {
+      logWithTimestamp(`WARNING: map '${mapName}' has ${nameless.length} living point(s) without an id, they are remembered by their place only`);
+    }
+  }
+
+  // A bought living space is never thrown away by the server - a child has
+  // paid for it. One bought before the map file had ids is matched to its
+  // point once, by the place it was bought at, and carries that id from then
+  // on. A house which has been moved in the map file simply takes its owner
+  // along.
+  let livingChanged = false;
+  livingSpaces.forEach(space => {
+    if (!space.id) {
+      const point = livingPointAt(space.map, space.x, space.y);
+      if (point && point.id) {
+        space.id = point.id;
+        livingChanged = true;
+        logWithTimestamp(`The living space bought by ${space.owner} at ${space.map} (${space.x}, ${space.y}) is from now on remembered as ${point.id}`);
+      } else {
+        logWithTimestamp(`WARNING: the living space bought by ${space.owner} at ${space.map} (${space.x}, ${space.y}) has no id and there is no living point in that place any more`);
+      }
+      return;
+    }
+    const home = livingPointById(space.id);
+    if (!home) {
+      logWithTimestamp(`WARNING: the living space ${space.id} bought by ${space.owner} is not in the map file any more`);
+      return;
+    }
+    if (home.mapName !== space.map || home.point.x !== space.x || home.point.y !== space.y) {
+      logWithTimestamp(`The living space ${space.id} bought by ${space.owner} has moved with its house from ${space.map} (${space.x}, ${space.y}) to ${home.mapName} (${home.point.x}, ${home.point.y})`);
+      space.map = home.mapName;
+      space.x = home.point.x;
+      space.y = home.point.y;
+      livingChanged = true;
+    }
+  });
+
+  if (lostAdventures.length > 0 || piecesMoved > 0) {
+    // Lets the players forget the maps of the adventures which are gone, and
+    // draws the places where the pieces lay now.
+    removePlayersTreasureMaps(lostAdventures.map(adventure => adventure.id));
+    await saveAdventures();
+  }
+  if (lostCoins.length > 0 || lostAdventures.length > 0 || piecesMoved > 0) {
+    await saveGamePoints();
+  }
+  if (playersMoved > 0) {
+    await savePlayers();
+  }
+  if (livingChanged) {
+    await saveLivingSpaces();
+  }
+}
+
 // Load initial data
 (async () => {
     await Promise.all([loadPlayers(), loadMapData(), loadGamePoints(), loadAdventures(), loadLivingSpaces()]);
+    await validateStoredPlaces();
 })();
 
 wss.on('connection', async ws => {
@@ -490,8 +728,12 @@ wss.on('connection', async ws => {
 
     } else if (message.type === 'create') {
       id = randomUUID();
-      const x = 3;
-      const y = 3; // TODO: calculate empty position!
+      // A new player starts in the corner of the base map, on the closest
+      // place there he can really stand on - the corner itself may well be
+      // water or a house.
+      const start = nearestWalkablePlace('base', 3, 3) || { x: 3, y: 3 };
+      const x = start.x;
+      const y = start.y;
       // Add the new player to the server state
       const playerState = { id, ws, x, y, map: 'base', name: getRandomName(), money: 0, colour: 'white', status: 'active', lastAction: dateNow(), collectedMaps: [] };
       players.set(id, playerState);
@@ -621,14 +863,19 @@ wss.on('connection', async ws => {
     } else if (message.type === 'buyLiving') {
       const player = players.get(id);
       if (player) {
-        const point = livingPointAt(message.map, message.x, message.y);
-        const taken = point && boughtLivingSpaceAt(message.map, message.x, message.y);
+        // The id tells which house the player means. An older browser sends
+        // no id, so the place it clicked on is looked up instead.
+        const home = livingPointById(message.id);
+        const point = home ? home.point : livingPointAt(message.map, message.x, message.y);
+        const mapName = home ? home.mapName : message.map;
+        const taken = boughtLivingSpaceOf(mapName, point);
         const price = point ? livingPrice(point) : null;
         // The player has to stand next to the house he is buying, exactly like
-        // he has to walk up to a transfer point to use it.
-        const isNear = player.map === message.map &&
-          Math.abs(player.x - message.x) <= 1 &&
-          Math.abs(player.y - message.y) <= 1;
+        // he has to walk up to a transfer point to use it. Where the house
+        // stands is read from the map, not from what the browser says.
+        const isNear = Boolean(point) && player.map === mapName &&
+          Math.abs(player.x - point.x) <= 1 &&
+          Math.abs(player.y - point.y) <= 1;
 
         let refusal = null;
         if (!point) {
@@ -644,7 +891,7 @@ wss.on('connection', async ws => {
         }
 
         if (refusal) {
-          logWithTimestamp(`Player ${id} could not buy a living space at ${message.map} (${message.x}, ${message.y}): ${refusal}`);
+          logWithTimestamp(`Player ${id} could not buy a living space at ${mapName} (${message.x}, ${message.y}): ${refusal}`);
           ws.send(JSON.stringify({ type: 'buyLivingFailed', reason: refusal }));
           // Whatever the player believed, let him see how things really are.
           ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
@@ -652,10 +899,14 @@ wss.on('connection', async ws => {
         } else {
           player.money -= price;
           player.lastAction = dateNow();
+          // The id is what the house is remembered by; the map and the place
+          // are only written down so that a person reading the file can see
+          // where it was at the time.
           livingSpaces.push({
-            map: message.map,
-            x: message.x,
-            y: message.y,
+            id: point.id,
+            map: mapName,
+            x: point.x,
+            y: point.y,
             type: point.livingType,
             price,
             owner: id,
@@ -663,14 +914,15 @@ wss.on('connection', async ws => {
           });
           debouncedLivingSave();
           debouncedSave();
-          logWithTimestamp(`Player ${id} bought ${livingTypeName(point.livingType)} at ${message.map} (${message.x}, ${message.y}) for €${price}`);
+          logWithTimestamp(`Player ${id} bought ${livingTypeName(point.livingType)} ${point.id || '(without an id)'} at ${mapName} (${point.x}, ${point.y}) for €${price}`);
 
           ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
           ws.send(JSON.stringify({
             type: 'livingBought',
-            map: message.map,
-            x: message.x,
-            y: message.y,
+            id: point.id,
+            map: mapName,
+            x: point.x,
+            y: point.y,
             price
           }));
           // Everybody has to see the lightbulb of that house turn blue.
@@ -764,28 +1016,12 @@ function spawnCoin() {
         return;
     }
 
-    // TODO: replace this with new findTile function
-    const grassTiles = [];
-    for (const [mapName, map] of Object.entries(maps)) {
-      if (map.type === 'public') {
-        const mapTiles = map.tiles;
-        for (let y = 0; y < mapTiles.length; y++) {
-          for (let x = 0; x < mapTiles[y].length; x++) {
-            if (mapTiles[y][x] === 'Ž') {
-                // TODO: we should also check if there is no existing coin in that place
-                grassTiles.push({ x, y, mapName, tileLength: mapTiles.length });
-            }
-          }
-        }
-      }
-    }
-
-    if (grassTiles.length === 0) {
+    // TODO: we should also check if there is no existing coin in that place
+    const randomTile = findTile(coinTiles);
+    if (!randomTile) {
         logWithTimestamp(`No grass tiles found on all maps to spawn a coin.`);
         return;
     }
-
-    const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
 
     const newCoin = { type: 'coin', x: randomTile.x, y: randomTile.y, map: randomTile.mapName };
     serverGamePoints.push(newCoin);
@@ -875,7 +1111,7 @@ async function spawnAdventure() {
     createDate: dateNow()
   };
 
-  const treasureLocation = findTile(['Ž', 'R']);
+  const treasureLocation = findTile(treasureTiles);
   if (!treasureLocation) {
       logWithTimestamp('Could not find a suitable tile to spawn an adventure.');
       return;
@@ -894,7 +1130,7 @@ async function spawnAdventure() {
   for (let i = 0; i < pieces; i++) {
     let mapLocation = null;
     for (let attempt = 0; attempt < 20; attempt++) {
-      const candidate = findTile(['Ž', 'R']);
+      const candidate = findTile(treasureTiles);
       if (!candidate) {
         break;
       }
