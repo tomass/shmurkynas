@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
-import { dirLight, setDirLightZoom } from "./components/DirectionalLight";
+import { dirLight, fitShadowToCamera } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
 import { map, initialiseMap, initialiseMapData, switchToMap, gamePointsGroup } from "./components/Map";
 import { coinBurstGroup, animateCoinBursts } from "./coinBurst";
@@ -31,10 +31,11 @@ player.add(dirLight);
 
 const camera = Camera();
 player.add(camera);
+fitShadowToCamera(camera);
 
 function handleZoom(zoom) {
     camera.setZoom(zoom);
-    setDirLightZoom(zoom);
+    fitShadowToCamera(camera);
 }
 
 collectUserInput(camera, handleZoom);
@@ -81,6 +82,7 @@ renderer.setAnimationLoop(animate);
 
 window.addEventListener('resize', () => {
     camera.handleResize();
+    fitShadowToCamera(camera);
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
