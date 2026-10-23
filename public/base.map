@@ -1,5 +1,6 @@
 [map=base]
 type=public
+origin_y=-1
 [tiles]
 ŽŽŽŽŽŽŽŽŽŽŽPŽŽŽŽŽGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGŽMŽŽ
 ŽŽŽŽŽŽŽŽŽŽŽPPPŽŽŽŽŽŽŽŽŽŽŽŽŽMŽMŽŽŽŽŽMŽŽŽŽŽŽŽŽŽŽŽŽMŽGŽŽŽM
@@ -30,7 +31,8 @@ GVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 GVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 GVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 GŽMŽŽŽŽMŽŽŽŽŽŽMŽŽŽŽMMŽŽŽMŽMŽŽŽŽŽŽŽMŽMŽŽŽŽŽŽŽMŽŽŽŽMŽŽŽŽM
-ŽŽŽŽMŽŽŽŽMŽŽŽŽŽŽMŽŽŽŽŽŽŽŽŽŽŽŽŽMŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽ
+GŽŽŽMŽŽŽŽMŽŽŽŽŽŽMŽŽŽŽŽŽŽŽŽŽŽŽŽMŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽ
+GŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽŽ
 [points]
 transfer:
 x=8
@@ -39,6 +41,7 @@ map=mokykla
 map_x=0
 map_y=2
 living:
+id=base-flat-01
 x=36
 y=17
 type=flat1
@@ -47,6 +50,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-02
 x=39
 y=17
 type=flat1
@@ -55,6 +59,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-03
 x=36
 y=14
 type=flat1
@@ -63,6 +68,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-04
 x=36
 y=15
 type=flat1
@@ -71,6 +77,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-05
 x=36
 y=16
 type=flat1
@@ -79,6 +86,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-06
 x=39
 y=14
 type=flat1
@@ -87,6 +95,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-07
 x=39
 y=15
 type=flat1
@@ -95,6 +104,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-08
 x=39
 y=16
 type=flat1
@@ -103,6 +113,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-09
 x=28
 y=14
 type=flat1
@@ -111,6 +122,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-10
 x=28
 y=15
 type=flat1
@@ -119,6 +131,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-11
 x=28
 y=16
 type=flat1
@@ -127,6 +140,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-12
 x=28
 y=17
 type=flat1
@@ -135,6 +149,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-13
 x=28
 y=18
 type=flat1
@@ -143,6 +158,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-14
 x=18
 y=18
 type=flat1
@@ -151,6 +167,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-15
 x=19
 y=18
 type=flat1
@@ -159,6 +176,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-16
 x=20
 y=18
 type=flat1
@@ -167,6 +185,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-17
 x=21
 y=18
 type=flat1
@@ -175,6 +194,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-18
 x=23
 y=18
 type=flat1
@@ -183,6 +203,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-19
 x=24
 y=18
 type=flat1
@@ -191,6 +212,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-20
 x=25
 y=18
 type=flat1
@@ -199,6 +221,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-21
 x=26
 y=18
 type=flat1
@@ -207,6 +230,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-22
 x=13
 y=17
 type=flat1
@@ -215,6 +239,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-23
 x=14
 y=17
 type=flat1
@@ -223,6 +248,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-24
 x=15
 y=17
 type=flat1
@@ -231,6 +257,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-flat-25
 x=16
 y=17
 type=flat1
@@ -239,6 +266,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-house-01
 x=41
 y=14
 type=house1
@@ -247,6 +275,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-house-02
 x=41
 y=16
 type=house1
@@ -255,6 +284,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-house-03
 x=41
 y=18
 type=house1
@@ -263,6 +293,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-house-04
 x=43
 y=18
 type=house1
@@ -271,6 +302,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-house-05
 x=43
 y=16
 type=house1
@@ -279,6 +311,7 @@ owner=
 price=0
 maintenance=0
 living:
+id=base-house-06
 x=43
 y=14
 type=house1
