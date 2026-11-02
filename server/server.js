@@ -8,6 +8,7 @@ import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAp
 import { findTile } from '../src/utilies/findTile.js';
 import { tileAt, toIndex } from '../shared/mapCoords.js';
 import { livingKey, livingPrice, livingTypeName } from '../shared/livingSpace.js';
+import { tileIsWalkable } from '../shared/tiles.js';
 import { initialiseMapData } from '../src/components/Map.js';
 
 const wss = new WebSocketServer({ port: 8088 });
@@ -37,9 +38,6 @@ const adventureTypes = ['treasure1', 'treasure2', 'treasure4'];
 // validateStoredPlaces.
 const coinTiles = ['Ž'];
 const treasureTiles = ['Ž', 'R'];
-// Tiles a player can not stand on. The browser forbids walking onto them in
-// endsUpInValidPosition, these are the very same ones.
-const unwalkableTiles = ['M', 'P', 'V'];
 
 function pieceCount(adventure) {
   const count = Number(String(adventure.type).replace('treasure', ''));
@@ -442,9 +440,10 @@ function placeIsOneOf(mapName, x, y, allowed) {
   return tile !== undefined && allowed.includes(tile);
 }
 
+// The browser forbids walking onto the very same tiles in
+// endsUpInValidPosition, both of them ask shared/tiles.js.
 function placeIsWalkable(mapName, x, y) {
-  const tile = tileAt(maps[mapName], x, y);
-  return tile !== undefined && !unwalkableTiles.includes(tile);
+  return tileIsWalkable(tileAt(maps[mapName], x, y));
 }
 
 // The closest place to the given one a player can stand on - the place itself

@@ -1,5 +1,6 @@
 import { calculateFinalPosition } from "./calculateFinalPosition.js";
 import { mapData, currentOrigin } from "../components/Map.js";
+import { tileIsWalkable } from "../../shared/tiles.js";
 
 export function endsUpInValidPosition(currentPosition, moves) {
   const finalPosition = calculateFinalPosition(currentPosition, moves);
@@ -18,10 +19,6 @@ export function endsUpInValidPosition(currentPosition, moves) {
   ) {
     return false;
   }
-  if (mapData[index.y][index.x] === "M" ||
-      mapData[index.y][index.x] === "P" ||
-      mapData[index.y][index.x] === "V"
-  ) return false;
 
-  return true;
+  return tileIsWalkable(mapData[index.y][index.x]);
 }

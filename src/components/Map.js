@@ -9,6 +9,9 @@ import { ActivePoint } from "./ActivePoint.js";
 import { Coin } from "./Coin.js";
 import { TreasureMap } from "./TreasureMap.js";
 import { Floor } from "./Floor.js";
+import { WoodFloor } from "./WoodFloor.js";
+import { TileFloor } from "./TileFloor.js";
+import { Wall } from "./Wall.js";
 import { Chair } from "./Chair.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition.js";
 import { initializePlayer } from "./Player.js";
@@ -208,6 +211,12 @@ function addTile(tiles, activePoints, x, y, type) {
   } else if (type === "K") {
     tiles.add(Floor(x, y));
     tiles.add(Chair(x, y));
+  } else if (type === "g") {
+    tiles.add(WoodFloor(x, y));
+  } else if (type === "p") {
+    tiles.add(TileFloor(x, y));
+  } else if (type === "S") {
+    tiles.add(Wall(x, y));
   } else /*(type === "Ž")*/ {
     tiles.add(Grass(x, y));
   }

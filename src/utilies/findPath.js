@@ -1,13 +1,12 @@
 import easystarjs from "easystarjs";
 import { mapData, currentOrigin } from "../components/Map";
+import { pathableTiles } from "../../shared/tiles.js";
 
 const easystar = new easystarjs.js();
 
-const walkableTiles = ["G", "Ž", "R"];
-
 export function initializePathfinding() {
   easystar.setGrid(mapData);
-  easystar.setAcceptableTiles(walkableTiles);
+  easystar.setAcceptableTiles(pathableTiles);
 }
 
 // The path finder knows nothing about the world, it only walks the tile array
