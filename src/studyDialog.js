@@ -1,4 +1,5 @@
 import { subjects } from '../shared/subjects.js';
+import { lessonsFor, startingGrade } from '../shared/lessons.js';
 import { listenToPresses } from './utilies/listenToPresses.js';
 
 // What a child sees after tapping a desk at school: the subject of that desk
@@ -42,8 +43,30 @@ export function showStudyDialog(subjectId) {
   buildDialog();
 
   titleEl.textContent = `${subject.icon} ${subject.name}`;
-  // No lessons have been written yet, so there is nothing to list.
-  lessonsEl.textContent = 'Pamokų čia dar nėra.';
+  // Nobody has been moved up a grade yet, so every child is in the one all
+  // of them start in.
+  listLessons(lessonsFor(subjectId, startingGrade));
 
   dialog.style.display = 'block';
+}
+
+// Every lesson gets a button of its own, with what it pays written on it.
+function listLessons(lessons) {
+  lessonsEl.textContent = '';
+  if (lessons.length === 0) {
+    lessonsEl.textContent = 'Pamokų čia dar nėra.';
+    return;
+  }
+  lessons.forEach(lesson => {
+    const button = document.createElement('button');
+    const name = document.createElement('span');
+    const reward = document.createElement('span');
+    name.textContent = lesson.name;
+    reward.textContent = `€${lesson.reward}`;
+    button.appendChild(name);
+    button.appendChild(reward);
+    // There is nothing behind a lesson yet, so its button can not be pressed.
+    button.disabled = true;
+    lessonsEl.appendChild(button);
+  });
 }

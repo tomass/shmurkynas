@@ -80,6 +80,9 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   (`DeskMath`, `DeskArt` in `src/components`): the plain `Desk` with a sign
   turning above it - a set square, a palette - so that it is seen from afar
   what is studied there. A subject without such a component gets the plain desk.
+- **Lessons**: which lessons there are - their subject, grade, name and what they
+  pay - is written down once, in `shared/lessons.js`. A desk lists the lessons of
+  its subject for the grade the child is in; every child starts in grade 5.
 - **Coordinates**: `(x, y)` = tile grid position; `(x, 0, z)` in Three.js space.
 - In map file tiles are stored with 0,0 on the top as this is more natural to human,
   who is draing a map.
