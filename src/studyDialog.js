@@ -1,13 +1,17 @@
 import { subjects } from '../shared/subjects.js';
 import { lessonsFor, startingGrade } from '../shared/lessons.js';
+import { playLesson } from './playLesson.js';
 import { listenToPresses } from './utilies/listenToPresses.js';
 
 // What a child sees after tapping a desk at school: the subject of that desk
-// and the lessons which can be studied there.
+// and the lessons which can be studied there, and then the lesson itself.
 
 let dialog = null;
 let titleEl = null;
 let lessonsEl = null;
+let lessonEl = null;
+// The subject of the desk the dialog was opened at.
+let shownSubject = null;
 
 // The dialog is only put on the page when it is needed for the first time.
 function buildDialog() {
@@ -24,30 +28,49 @@ function buildDialog() {
   dialog = document.getElementById('study-dialog');
   titleEl = document.getElementById('study-title');
   lessonsEl = document.getElementById('study-lessons');
+  lessonEl = document.getElementById('study-lesson');
 
   listenToPresses(document.getElementById('close-study'), closeStudyDialog);
 }
 
+// Closing the dialog in the middle of a lesson simply drops that lesson.
 export function closeStudyDialog() {
   if (dialog) {
     dialog.style.display = 'none';
+    lessonEl.textContent = '';
   }
 }
 
 // Shows the lessons of one subject - 'math', 'art' and so on.
 export function showStudyDialog(subjectId) {
-  const subject = subjects[subjectId];
-  if (!subject) {
+  if (!subjects[subjectId]) {
     return;
   }
   buildDialog();
+  shownSubject = subjectId;
+  showLessonList();
+  dialog.style.display = 'block';
+}
 
+// The dialog shows one of two things: the list of lessons to choose from, or
+// the lesson which has been chosen.
+function showLessonList() {
+  const subject = subjects[shownSubject];
   titleEl.textContent = `${subject.icon} ${subject.name}`;
+  lessonEl.textContent = '';
+  lessonEl.style.display = 'none';
+  lessonsEl.style.display = '';
   // Nobody has been moved up a grade yet, so every child is in the one all
   // of them start in.
-  listLessons(lessonsFor(subjectId, startingGrade));
+  listLessons(lessonsFor(shownSubject, startingGrade));
+}
 
-  dialog.style.display = 'block';
+function startLesson(lesson) {
+  titleEl.textContent = `${subjects[shownSubject].icon} ${lesson.name}`;
+  lessonsEl.style.display = 'none';
+  lessonEl.style.display = '';
+  // When the lesson is over the child is back at the list, to pick another.
+  playLesson(lessonEl, lesson, showLessonList);
 }
 
 // Every lesson gets a button of its own, with what it pays written on it.
@@ -65,8 +88,9 @@ function listLessons(lessons) {
     reward.textContent = `€${lesson.reward}`;
     button.appendChild(name);
     button.appendChild(reward);
-    // There is nothing behind a lesson yet, so its button can not be pressed.
-    button.disabled = true;
+    // A lesson which has no game yet is listed, but can not be pressed.
+    button.disabled = !lesson.game;
+    listenToPresses(button, () => startLesson(lesson));
     lessonsEl.appendChild(button);
   });
 }

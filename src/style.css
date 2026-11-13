@@ -264,3 +264,194 @@ body {
 #toolbar div[id$="-button"] {
   cursor: pointer;
 }
+
+/* A lesson being studied: which question it is, the question itself and the
+   thing it asks about, written big. */
+.lesson-progress {
+  font-size: 15px;
+  color: #c0bfbc;
+}
+
+.lesson-figure {
+  font-family: serif;
+  font-size: 46px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.lesson-feedback {
+  font-size: 20px;
+}
+
+.lesson-stars {
+  font-size: 30px;
+}
+
+/* The lightbulb of a hint, and in its very place the hint itself once it has
+   been asked for. */
+.lesson-hint {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #f6d32d;
+}
+
+.lesson-hint button {
+  font-family: sans-serif;
+  font-size: 15px;
+  padding: 6px 12px;
+  border: 1px solid #f6d32d;
+  border-radius: 8px;
+  background: transparent;
+  color: #f6d32d;
+  cursor: pointer;
+}
+
+/* An answer picked out of several: big buttons, two in a row. */
+.answer-choice {
+  display: grid;
+  grid-template-columns: repeat(2, 120px);
+  gap: 10px;
+  justify-content: center;
+}
+
+.answer-choice button {
+  font-family: sans-serif;
+  font-size: 26px;
+  padding: 16px 0;
+  border: none;
+  border-radius: 8px;
+  background: #3584e4;
+  color: white;
+  cursor: pointer;
+}
+
+/* An answer put together out of tiles: the row being built, with a dashed
+   line around it, and under it the table the tiles are taken from. Six tiles
+   fit side by side. */
+.answer-tiles {
+  width: 290px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.tiles-row,
+.tiles-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.tiles-row {
+  min-height: 46px;
+  padding: 6px;
+  border: 2px dashed #77767b;
+  border-radius: 8px;
+}
+
+.tile {
+  width: 40px;
+  height: 46px;
+  padding: 0;
+  font-family: serif;
+  font-size: 24px;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  background: #f6f5f4;
+  color: #241f31;
+  box-shadow: 0 3px 0 #9a9996;
+  cursor: pointer;
+}
+
+/* A tile taken from the table leaves its place empty. */
+.tile.taken {
+  visibility: hidden;
+}
+
+.answer-tiles .dialog-buttons {
+  margin-top: 12px;
+}
+
+.answer-tiles .dialog-buttons button:disabled {
+  background: #4d4d4d;
+  color: #9a9996;
+  cursor: default;
+}
+
+/* Whether the answer was right is shown in the place of the answer itself.
+   The place keeps its height, so that the dialog does not jump about. */
+.lesson-answer {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* The lesson dialog never grows taller than the screen: what does not fit is
+   scrolled to instead of being cut off. On a narrow phone it may take up
+   nearly the whole width, the tiles need the room. */
+#study-dialog {
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* On a low screen everything is packed a little tighter. */
+@media (max-height: 620px) {
+  #study-dialog {
+    padding: 10px 20px;
+  }
+
+  #study-dialog h2 {
+    margin-bottom: 4px;
+  }
+
+  #study-dialog .dialog-buttons {
+    margin-top: 8px;
+  }
+
+  .lesson-figure {
+    font-size: 40px;
+  }
+}
+
+/* A phone held sideways has little height and plenty of width. There the
+   question stands to the left of the answer instead of above it, and eight
+   tiles fit side by side. */
+@media (max-height: 560px) and (orientation: landscape) {
+  #study-lesson {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .lesson-question {
+    min-width: 170px;
+  }
+
+  .lesson-answer {
+    min-width: 380px;
+    min-height: 220px;
+  }
+
+  .answer-tiles {
+    width: 380px;
+  }
+
+  /* Eleven tiles and the row above them only just fit the height. */
+  #study-dialog {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .answer-tiles .dialog-buttons {
+    margin-top: 6px;
+  }
+}

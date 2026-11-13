@@ -83,6 +83,16 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 - **Lessons**: which lessons there are - their subject, grade, name and what they
   pay - is written down once, in `shared/lessons.js`. A desk lists the lessons of
   its subject for the grade the child is in; every child starts in grade 5.
+- **The game of a lesson** is a file of its own in `shared/lessons/` (see
+  `romanNumerals.js`) with two things in it: `makeProblems(grade)` makes up the
+  problems of one sitting - each a `question`, its `answer` and a `solution` to
+  show after a wrong answer - and `isRight(problem, given)` checks an answer. It
+  is hung on its line of the catalogue as `game:`; a lesson without a game is
+  listed, but can not be studied. `src/playLesson.js` runs a sitting, and what a
+  question is answered with is chosen by its `kind`, each kind being a file in
+  `src/answers/`: `choice` gives the `options` of the question as buttons to pick
+  one of, `tiles` gives its `tiles` to put in a row. Children are not asked to
+  type an answer in. A question can carry a `hint`, which the child may ask for.
 - **Coordinates**: `(x, y)` = tile grid position; `(x, 0, z)` in Three.js space.
 - In map file tiles are stored with 0,0 on the top as this is more natural to human,
   who is draing a map.
