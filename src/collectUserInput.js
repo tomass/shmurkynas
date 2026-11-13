@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import { tileSize } from "./constants";
 import { queueMove, playerData as position } from "./components/Player";
-import { currentPoints, switchToMap } from "./components/Map";
+import { currentPoints, currentTileAt, switchToMap } from "./components/Map";
+import { deskSign, deskTop } from "./components/Desk";
+import { subjectOfDesk } from "../shared/subjects.js";
+import { showStudyDialog } from "./studyDialog";
 import { findPath, initializePathfinding } from "./utilies/findPath";
 import { sendMessage } from "./websocket";
 import { playerData, updatePlayerMoney } from "./components/Player";
@@ -185,6 +188,51 @@ export function collectUserInput(camera, handleZoom) {
         moveToPointer(event);
     }
 
+    // Where the tap lands at a certain height above the ground: the tile, and
+    // how far from the middle of that tile.
+    function tileUnderPointer(height) {
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -height);
+        const intersect = new THREE.Vector3();
+        raycaster.ray.intersectPlane(plane, intersect);
+        const tile = {
+            x: Math.round(intersect.x / tileSize),
+            y: Math.round(intersect.y / tileSize),
+        };
+        return {
+            tile,
+            offset: {
+                x: intersect.x - tile.x * tileSize,
+                y: intersect.y - tile.y * tileSize,
+            },
+        };
+    }
+
+    // The desk a tap is meant for, if there is one. The game is looked at
+    // from the side and a desk stands higher than the floor, so a finger put
+    // on the top of a desk points at the floor behind it, and one put on the
+    // sign turning above the desk points even further away. That is why the
+    // tap is first looked for at the height of the sign, then on the board of
+    // the desk, and only then on the floor.
+    function tappedDesk(floorTile) {
+        const isDesk = tile => Boolean(subjectOfDesk(currentTileAt(tile.x, tile.y)));
+        const onSign = tileUnderPointer(deskSign.height);
+        if (isDesk(onSign.tile) &&
+            Math.hypot(onSign.offset.x, onSign.offset.y) <= deskSign.radius) {
+            return onSign.tile;
+        }
+        const onTop = tileUnderPointer(deskTop.height);
+        if (isDesk(onTop.tile) &&
+            Math.abs(onTop.offset.x) <= deskTop.width / 2 &&
+            Math.abs(onTop.offset.y) <= deskTop.depth / 2) {
+            return onTop.tile;
+        }
+        return isDesk(floorTile) ? floorTile : null;
+    }
+
+    function isNextToPlayer(tile) {
+        return Math.abs(position.x - tile.x) <= 1 && Math.abs(position.y - tile.y) <= 1;
+    }
+
     function moveToPointer( event ) {
         // calculate pointer position in normalized device coordinates
         // (-1 to +1) for both components
@@ -192,21 +240,23 @@ export function collectUserInput(camera, handleZoom) {
         pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
         raycaster.setFromCamera(pointer, camera);
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-        const intersect = new THREE.Vector3();
-        raycaster.ray.intersectPlane(plane, intersect);
-
-        const to = {
-            x: Math.round(intersect.x / tileSize),
-            y: Math.round(intersect.y / tileSize),
-        }
+        const to = tileUnderPointer(0).tile;
         // At home a tap can be about the furniture: putting a thing down, or
         // picking up one which is already standing there. Such a tap is not
         // asking the player to walk anywhere.
         if (tapInLiving(to.x, to.y)) {
             return;
         }
-        if (Math.abs(position.x - to.x) <= 1 && Math.abs(position.y - to.y) <= 1) {
+        // A desk is not walked onto either: a child standing next to it is
+        // shown its lessons, and from further away the tap means nothing.
+        const desk = tappedDesk(to);
+        if (desk) {
+            if (isNextToPlayer(desk)) {
+                showStudyDialog(subjectOfDesk(currentTileAt(desk.x, desk.y)));
+            }
+            return;
+        }
+        if (isNextToPlayer(to)) {
             const clickedPoint = currentPoints.find(p => p.x === to.x && p.y === to.y);
             if (clickedPoint && clickedPoint.type === "transfer") {
               console.log('transfer to map:', clickedPoint.map, clickedPoint.map_x, clickedPoint.map_y);

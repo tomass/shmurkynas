@@ -13,6 +13,9 @@ import { WoodFloor } from "./WoodFloor.js";
 import { TileFloor } from "./TileFloor.js";
 import { Wall } from "./Wall.js";
 import { Chair } from "./Chair.js";
+import { Desk } from "./Desk.js";
+import { DeskMath } from "./DeskMath.js";
+import { DeskArt } from "./DeskArt.js";
 import { LivingItem } from "./LivingItem.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition.js";
 import { initializePlayer, playerData } from "./Player.js";
@@ -23,6 +26,14 @@ import { currentItems, setInsideLiving } from "../livingItems.js";
 import { livingFreeColour, livingOccupiedColour } from "../constants.js";
 import { mapOrigin, toWorld, toIndex, tileAt } from "../../shared/mapCoords.js";
 import { tileIsWalkable } from "../../shared/tiles.js";
+import { subjectOfDesk } from "../../shared/subjects.js";
+
+// The indoor floors, by the tile character they are drawn for.
+const floors = { R: Floor, g: WoodFloor, p: TileFloor };
+
+// The desks of the subjects which have one of their own. A subject which is
+// not named here is given a plain desk.
+const desks = { math: DeskMath, art: DeskArt };
 
 export let maps = {}; // Data of ALL maps
 export let mapData = []; // data of the CURRENT map being rendered
@@ -46,8 +57,12 @@ export const gamePointsGroup = new THREE.Group();
 // The furniture of the home being walked in. It is kept apart from the glued
 // tiles, because a single piece of it can be moved at any moment.
 export const livingItemsGroup = new THREE.Group();
+// The school desks of the drawn map. They are kept apart from the glued tiles
+// as well, because the sign above each of them keeps turning.
+export const desksGroup = new THREE.Group();
 map.add(gamePointsGroup);
 map.add(livingItemsGroup);
+map.add(desksGroup);
 
 // The name the rest of the world knows the place of the player by.
 export function currentPlace() {
@@ -122,8 +137,10 @@ export function initialiseMap(mapName = 'base', livingId = null) {
 
   map.remove(...map.children);
   disposeMergedTiles();
+  removeDesks();
   map.add(gamePointsGroup);
   map.add(livingItemsGroup);
+  map.add(desksGroup);
 
   // Tiles are built one by one and then glued together. The map does not change
   // while it is being played, and drawing a few big meshes instead of thousands
@@ -230,6 +247,30 @@ function disposeMergedTiles() {
   mergedTiles = null;
 }
 
+// Takes away the desks of the previously drawn map and frees their memory.
+function removeDesks() {
+  desksGroup.traverse(part => {
+    if (part.isMesh) {
+      part.geometry.dispose();
+      part.material.dispose();
+    }
+  });
+  desksGroup.remove(...desksGroup.children);
+}
+
+// The floor a desk stands on. A tile holds one character only, and that one
+// says "desk", so the desk is given the floor of the room around it.
+function floorNextTo(x, y) {
+  const around = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  for (const [dx, dy] of around) {
+    const floor = floors[currentTileAt(x + dx, y + dy)];
+    if (floor) {
+      return floor;
+    }
+  }
+  return WoodFloor;
+}
+
 function addTile(tiles, activePoints, x, y, type) {
   if (type === "G") {
     tiles.add(Road(x, y));
@@ -240,17 +281,17 @@ function addTile(tiles, activePoints, x, y, type) {
     tiles.add(Tree(x, y));
   } else if (type === "V") {
     tiles.add(Water(x, y));
-  } else if (type === "R") {
-    tiles.add(Floor(x, y));
+  } else if (floors[type]) {
+    tiles.add(floors[type](x, y));
   } else if (type === "K") {
     tiles.add(Floor(x, y));
     tiles.add(Chair(x, y));
-  } else if (type === "g") {
-    tiles.add(WoodFloor(x, y));
-  } else if (type === "p") {
-    tiles.add(TileFloor(x, y));
   } else if (type === "S") {
     tiles.add(Wall(x, y));
+  } else if (subjectOfDesk(type)) {
+    const subject = subjectOfDesk(type);
+    tiles.add(floorNextTo(x, y)(x, y));
+    desksGroup.add(desks[subject] ? desks[subject](x, y) : Desk(x, y, subject));
   } else /*(type === "Ž")*/ {
     tiles.add(Grass(x, y));
   }

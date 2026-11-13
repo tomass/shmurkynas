@@ -67,7 +67,19 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   | Tree     | `M`            |                        |
   | Building | `P`            |                        |
   | Water    | `V`            |                        |
+  | Math desk | `0`           | A school desk, not walkable. |
+  | Art desk | `1`            | A school desk, not walkable. |
 
+- **School desks**: a child standing next to a desk taps it and is shown the
+  lessons of its subject (`src/studyDialog.js`). Every subject has a desk of its
+  own, a digit in the map file; `2`-`9` are kept for the desks of later subjects.
+  Which digit belongs to which subject is written down once, in
+  `shared/subjects.js`, and the map editor has to know the same digit. A desk
+  tile says nothing about the floor under it, so the game gives the desk the
+  floor of the tile next to it. The desk of a subject is a component of its own
+  (`DeskMath`, `DeskArt` in `src/components`): the plain `Desk` with a sign
+  turning above it - a set square, a palette - so that it is seen from afar
+  what is studied there. A subject without such a component gets the plain desk.
 - **Coordinates**: `(x, y)` = tile grid position; `(x, 0, z)` in Three.js space.
 - In map file tiles are stored with 0,0 on the top as this is more natural to human,
   who is draing a map.
@@ -138,6 +150,9 @@ To get started with the project, run the following commands:
 - `npm install`: Install the necessary dependencies.
 - `npm run dev`: Start the frontend development server.
 - `npm run start:server`: Start the backend server.
+- `npm run dev` talks to the live game server. To talk to a server started on this
+  computer instead, name it: `SHMURKYNAS_SERVER=ws://localhost:8088 npm run dev`
+  (see `vite.config.js`).
 
 ### **Key Architectural Components**
 

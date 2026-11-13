@@ -3,7 +3,7 @@ import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
 import { dirLight, fitShadowToCamera } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
-import { map, enterPlace, initialiseMapData, switchToMap, gamePointsGroup } from "./components/Map";
+import { map, enterPlace, initialiseMapData, switchToMap, gamePointsGroup, desksGroup } from "./components/Map";
 import { coinBurstGroup, animateCoinBursts } from "./coinBurst";
 import { otherPlayers, updateOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
@@ -96,10 +96,21 @@ function animateCoins() {
     });
 }
 
+// The sign above a school desk keeps turning, so that it is seen from every
+// side what is studied there.
+function animateDesks() {
+    desksGroup.children.forEach(desk => {
+        if (desk.userData.sign) {
+            desk.userData.sign.rotation.z += 0.02;
+        }
+    });
+}
+
 function animate() {
   //animateVehicles();
   animatePlayer();
   animateCoins();
+  animateDesks();
   animateCoinBursts();
   //hitTest();
 

@@ -1,9 +1,11 @@
 // What a player may walk on. The browser and the server both ask here, so that
 // a new kind of tile only has to be written down in one place.
 
-// Tiles a player can not stand on: a tree, a house, the water and an indoor
-// wall. Everything else is a place to stand on.
-export const unwalkableTiles = ['M', 'P', 'V', 'S'];
+import { deskTiles } from './subjects.js';
+
+// Tiles a player can not stand on: a tree, a house, the water, an indoor wall
+// and a school desk. Everything else is a place to stand on.
+export const unwalkableTiles = ['M', 'P', 'V', 'S', ...deskTiles];
 
 // Tiles the path finder may lead a player through. It wants the walkable kinds
 // named one by one, and it is only allowed to use the ones a single step is

@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "game-local",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["SHMURKYNAS_SERVER=ws://localhost:8088", "npx", "vite", "--port", "5183", "--strictPort"],
+      "port": 5183
     }
   ]
 }
