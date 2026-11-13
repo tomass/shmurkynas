@@ -13,12 +13,16 @@ import { WoodFloor } from "./WoodFloor.js";
 import { TileFloor } from "./TileFloor.js";
 import { Wall } from "./Wall.js";
 import { Chair } from "./Chair.js";
+import { LivingItem } from "./LivingItem.js";
 import { findFirstWalkablePosition } from "../utilies/findFirstWalkablePosition.js";
-import { initializePlayer } from "./Player.js";
+import { initializePlayer, playerData } from "./Player.js";
 import { updateAllOtherPlayers } from "../otherPlayers.js";
 import { isLivingOccupied } from "../livingSpaces.js";
+import { livingEntryTile, livingInsideMap } from "../../shared/livingSpace.js";
+import { currentItems, setInsideLiving } from "../livingItems.js";
 import { livingFreeColour, livingOccupiedColour } from "../constants.js";
-import { mapOrigin, toWorld, toIndex } from "../../shared/mapCoords.js";
+import { mapOrigin, toWorld, toIndex, tileAt } from "../../shared/mapCoords.js";
+import { tileIsWalkable } from "../../shared/tiles.js";
 
 export let maps = {}; // Data of ALL maps
 export let mapData = []; // data of the CURRENT map being rendered
@@ -29,9 +33,26 @@ export let currentOrigin = { x: 0, y: 0 };
 export let currentPoints = []; // active points of the CURRENT map being rendered
 export let gamePoints = []; // list of all game points (coins, treasure maps, etc) on all maps
 export let currentMapName = 'base'; // This should not be required, server sends our initial map and position
+// The home the player has walked into, named by the id of its living space.
+// The map being drawn is then the inside the house points at, but the world
+// calls the place by this id, so that two children never meet in each other's
+// rooms. Outside a home this is null and the place is the map itself.
+export let currentLiving = null;
+// Where the player stood before he walked into his home, so that he steps back
+// out of the very same door.
+let livingReturn = null;
 export const map = new THREE.Group();
 export const gamePointsGroup = new THREE.Group();
+// The furniture of the home being walked in. It is kept apart from the glued
+// tiles, because a single piece of it can be moved at any moment.
+export const livingItemsGroup = new THREE.Group();
 map.add(gamePointsGroup);
+map.add(livingItemsGroup);
+
+// The name the rest of the world knows the place of the player by.
+export function currentPlace() {
+  return currentLiving || currentMapName;
+}
 
 // The tiles of the drawn map, glued together into a few big meshes. Kept here
 // so that they can be thrown away when another map is drawn.
@@ -45,11 +66,11 @@ let activePointsGroup = null;
 export function drawGamePoints() {
     gamePointsGroup.remove(...gamePointsGroup.children);
     gamePoints.forEach(point => {
-        if (point.type === 'coin' && point.map === currentMapName) {
+        if (point.type === 'coin' && point.map === currentPlace()) {
             const coin = Coin(point.x, point.y, 0xffd700);
             gamePointsGroup.add(coin);
         }
-        if (point.type === 'treasureMap' && point.map === currentMapName) {
+        if (point.type === 'treasureMap' && point.map === currentPlace()) {
             const treasureMap = TreasureMap(point.x, point.y);
             gamePointsGroup.add(treasureMap);
         }
@@ -84,13 +105,17 @@ export function currentTileAt(x, y) {
 }
 
 // This function replaces the old `initialiseMap` and will render the map.
-export function initialiseMap(mapName = 'base') {
+// livingId is the home being walked in, when the drawn map is the inside of
+// somebody's house.
+export function initialiseMap(mapName = 'base', livingId = null) {
   if (!maps[mapName]) {
     console.error(`Map '${mapName}' not found.`);
     return;
   }
   // Update mapData to the one being rendered.
   currentMapName = mapName;
+  currentLiving = livingId;
+  setInsideLiving(livingId);
   mapData = [...maps[mapName].tiles];
   currentOrigin = mapOrigin(maps[mapName]);
   currentPoints = maps[mapName].points;
@@ -98,6 +123,7 @@ export function initialiseMap(mapName = 'base') {
   map.remove(...map.children);
   disposeMergedTiles();
   map.add(gamePointsGroup);
+  map.add(livingItemsGroup);
 
   // Tiles are built one by one and then glued together. The map does not change
   // while it is being played, and drawing a few big meshes instead of thousands
@@ -129,6 +155,14 @@ export function initialiseMap(mapName = 'base') {
   map.add(activePoints);
 
   drawGamePoints();
+  drawLivingItems();
+}
+
+// Draws the furniture of the home being walked in. Outside a home there is
+// nothing to draw.
+export function drawLivingItems() {
+  livingItemsGroup.remove(...livingItemsGroup.children);
+  currentItems().forEach(item => livingItemsGroup.add(LivingItem(item)));
 }
 
 // Glues the tiles into one mesh per look. Tiles that look the same and throw
@@ -252,6 +286,102 @@ export function refreshLivingPoints() {
   });
 }
 
+// The living point with this id, wherever in the map file it is drawn. A home
+// is found by its id, because the house it belongs to may be drawn somewhere
+// else tomorrow.
+export function livingPointById(id) {
+  if (!id) {
+    return null;
+  }
+  for (const [mapName, oneMap] of Object.entries(maps)) {
+    const point = (oneMap.points || []).find(p => p.type === 'living' && p.id === id);
+    if (point) {
+      return { point, mapName };
+    }
+  }
+  return null;
+}
+
+// The tile the player of the home being walked in came in through. The
+// furniture is not allowed to stand on it, so that the door is never blocked.
+export function currentEntryTile() {
+  const home = livingPointById(currentLiving);
+  return home ? livingEntryTile(home.point, maps[livingInsideMap(home.point)]) : null;
+}
+
+// A free tile right next to a house, for a player who steps out of his home
+// and has nowhere remembered to step back onto.
+function nextToHouse(home) {
+  const outside = maps[home.mapName];
+  if (!outside) {
+    return null;
+  }
+  const steps = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }];
+  for (const step of steps) {
+    const x = home.point.x + step.x;
+    const y = home.point.y + step.y;
+    if (tileIsWalkable(tileAt(outside, x, y))) {
+      return { map: home.mapName, x, y };
+    }
+  }
+  return null;
+}
+
+// Walks the player into his own home. Gives back the name the world knows that
+// place by, or null when the home has no inside drawn for it yet.
+export function enterLiving(livingId, initializePathfinding) {
+  const home = livingPointById(livingId);
+  const inside = home ? maps[livingInsideMap(home.point)] : null;
+  const entry = home && inside ? livingEntryTile(home.point, inside) : null;
+  if (!entry) {
+    console.error(`The home '${livingId}' has no inside to walk into.`);
+    return null;
+  }
+  livingReturn = { map: currentPlace(), x: playerData.x, y: playerData.y };
+  initialiseMap(livingInsideMap(home.point), livingId);
+  initializePlayer(entry.x, entry.y);
+  initializePathfinding();
+  updateAllOtherPlayers();
+  return currentPlace();
+}
+
+// Steps the player back out of his home, onto the very tile he came in from.
+// Gives back the name of the place he ends up in.
+export function leaveLiving(initializePathfinding) {
+  const home = livingPointById(currentLiving);
+  let back = livingReturn;
+  if (!back || !maps[back.map] || !tileIsWalkable(tileAt(maps[back.map], back.x, back.y))) {
+    back = home ? nextToHouse(home) : null;
+  }
+  if (!back) {
+    console.error('There is no way out of this home.');
+    return null;
+  }
+  livingReturn = null;
+  initialiseMap(back.map, null);
+  initializePlayer(back.x, back.y);
+  initializePathfinding();
+  updateAllOtherPlayers();
+  return currentPlace();
+}
+
+// Draws the place the server says the player is standing in: a map everybody
+// can walk on, or the inside of one of his own homes.
+export function enterPlace(placeName) {
+  if (maps[placeName]) {
+    initialiseMap(placeName, null);
+    return;
+  }
+  const home = livingPointById(placeName);
+  const inside = home ? livingInsideMap(home.point) : null;
+  if (inside && maps[inside]) {
+    initialiseMap(inside, placeName);
+    return;
+  }
+  console.error(`Place '${placeName}' not found, going to the base map.`);
+  initialiseMap('base', null);
+}
+
 export function switchToMap(mapName, initializePathfinding, map_x, map_y) {
   if (maps[mapName]) {
     const newMap = maps[mapName];
@@ -274,7 +404,7 @@ export function switchToMap(mapName, initializePathfinding, map_x, map_y) {
     }
 
     if (newPosition) {
-      initialiseMap(mapName);
+      initialiseMap(mapName, null);
       initializePlayer(newPosition.x, newPosition.y);
       initializePathfinding(); // Re-initialize pathfinding with the new map
       updateAllOtherPlayers(); // Update visibility of other players on the new map

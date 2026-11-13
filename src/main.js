@@ -3,7 +3,7 @@ import { Renderer } from "./components/Renderer";
 import { Camera } from "./components/Camera";
 import { dirLight, fitShadowToCamera } from "./components/DirectionalLight";
 import { player, initializePlayer } from "./components/Player";
-import { map, initialiseMap, initialiseMapData, switchToMap, gamePointsGroup } from "./components/Map";
+import { map, enterPlace, initialiseMapData, switchToMap, gamePointsGroup } from "./components/Map";
 import { coinBurstGroup, animateCoinBursts } from "./coinBurst";
 import { otherPlayers, updateOtherPlayer } from "./otherPlayers.js";
 import { animateVehicles } from "./animateVehicles";
@@ -16,6 +16,7 @@ import { parseMapData } from "../shared/mapParser.js";
 import { connect, sendMessage } from "./websocket.js";
 import "./settings.js";
 import { collectedMapImages } from "./collectedMaps.js";
+import { updateLivingToolbar } from "./livingItemsUi.js";
 
 const scene = new THREE.Scene();
 scene.add(player);
@@ -70,7 +71,10 @@ window.addEventListener('DOMContentLoaded', () => {
 Promise.all([mapLoadedPromise, gameInitPromise]).then(([_, initData]) => {
   const { x, y, map, name, money, colour, players } = initData;
   initializePlayer(x, y, name, money, colour);
-  initialiseMap(map);
+  // The place can be a map everybody walks on, or the inside of one of the
+  // player's own homes, which he left the game standing in.
+  enterPlace(map);
+  updateLivingToolbar();
   players.forEach(playerInfo => {
     updateOtherPlayer(playerInfo);
   });

@@ -7,7 +7,8 @@ import { tearImage } from './tearMap.js';
 import { coinStartTime, coinEndTime, maxCoins, coinAppearanceProbability, coinAppearanceInterval, adventureAppearanceInterval, adventureAbandonInterval } from '../src/constants.js';
 import { findTile } from '../src/utilies/findTile.js';
 import { tileAt, toIndex } from '../shared/mapCoords.js';
-import { livingKey, livingPrice, livingTypeName } from '../shared/livingSpace.js';
+import { livingEntryTile, livingInsideMap, livingKey, livingPrice, livingTypeName } from '../shared/livingSpace.js';
+import { itemAt, itemPlacementRefusal, itemTiles, livingItemName, livingItemPrice, livingItemType } from '../shared/livingItems.js';
 import { tileIsWalkable } from '../shared/tiles.js';
 import { initialiseMapData } from '../src/components/Map.js';
 
@@ -16,6 +17,7 @@ const PLAYERS_FILE = './players.json';
 const GAMEPOINTS_FILE = './gamePoints.json';
 const ADVENTURES_FILE = './adventures.json';
 const LIVING_FILE = './livingSpaces.json';
+const LIVING_ITEMS_FILE = './livingItems.json';
 
 const players = new Map();
 let maps = {};
@@ -24,6 +26,10 @@ let adventures = [];
 // Living spaces which players have already bought. The map file only says
 // where the living spaces are, who lives in them is remembered here.
 let livingSpaces = [];
+// The furniture the players have bought for their homes. Every item knows the
+// id of the living space it stands in, so it stays in the right home even when
+// that home is drawn somewhere else on the map.
+let livingItems = [];
 // Torn map pieces of an adventure, kept so the same map is not drawn and torn
 // again for every single piece a player has. Keyed by adventure id.
 const adventureMapPieces = new Map();
@@ -194,6 +200,11 @@ async function saveLivingSpaces() {
   await fs.writeFile(LIVING_FILE, JSON.stringify(livingSpaces, null, 2));
 }
 
+// Save the furniture of all homes to file
+async function saveLivingItems() {
+  await fs.writeFile(LIVING_ITEMS_FILE, JSON.stringify(livingItems, null, 2));
+}
+
 let saveDebounce;
 function debouncedSave() {
   clearTimeout(saveDebounce);
@@ -216,6 +227,12 @@ let saveLivingDebounce;
 function debouncedLivingSave() {
   clearTimeout(saveLivingDebounce);
   saveLivingDebounce = setTimeout(saveLivingSpaces, 10000);
+}
+
+let saveLivingItemsDebounce;
+function debouncedLivingItemsSave() {
+  clearTimeout(saveLivingItemsDebounce);
+  saveLivingItemsDebounce = setTimeout(saveLivingItems, 10000);
 }
 
 // Load players from file on startup
@@ -284,6 +301,22 @@ async function loadLivingSpaces() {
   } catch (err) {
     if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
       logWithTimestamp('Error loading living spaces:', err);
+    }
+  }
+}
+
+// Load the furniture of the homes from file on startup
+async function loadLivingItems() {
+  try {
+    const data = await fs.readFile(LIVING_ITEMS_FILE, 'utf8');
+    const loaded = JSON.parse(data);
+    livingItems = Array.isArray(loaded)
+      ? loaded.filter(item => item && item.living && livingItemType(item.type))
+      : [];
+    logWithTimestamp(`Loaded ${livingItems.length} pieces of furniture from file`);
+  } catch (err) {
+    if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+      logWithTimestamp('Error loading living items:', err);
     }
   }
 }
@@ -362,6 +395,69 @@ function sendLivingSpaces(ws = null) {
   }
 }
 
+// Where a player is standing. A map everybody can walk on is simply called by
+// its own name, but inside a bought home the place is called by the id of that
+// living space, so that two children never end up in each other's rooms. The
+// tiles of such a place are the ones of the map its house points at.
+function mapOfPlace(placeName) {
+  if (maps[placeName]) {
+    return maps[placeName];
+  }
+  const home = livingPointById(placeName);
+  return home ? maps[livingInsideMap(home.point)] : undefined;
+}
+
+// Is this place the inside of a home, and if so, whose?
+function livingSpaceOfPlace(placeName) {
+  if (maps[placeName]) {
+    return null;
+  }
+  return livingSpaces.find(space => space.id === placeName) || null;
+}
+
+// The tile a player lands on when he walks into the home with this id.
+function livingEntryOf(livingId) {
+  const home = livingPointById(livingId);
+  return home ? livingEntryTile(home.point, maps[livingInsideMap(home.point)]) : null;
+}
+
+// The furniture standing in one home.
+function itemsOfLiving(livingId) {
+  return livingItems.filter(item => item.living === livingId);
+}
+
+// All the furniture of all the homes of one player. Nobody but the owner ever
+// walks into a home, so this is everything he needs to know about.
+function livingItemsOfPlayer(playerId) {
+  const mine = new Set(livingSpaces.filter(space => space.owner === playerId).map(space => space.id));
+  return livingItems.filter(item => mine.has(item.living));
+}
+
+function sendLivingItems(ws, playerId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  ws.send(JSON.stringify({ type: 'livingItems', items: livingItemsOfPlayer(playerId) }));
+}
+
+// The home a player may put furniture into: his own, and only the one he is
+// standing in. Gives back the living space, the map of its inside and the
+// furniture already standing there, or a refusal to show the player.
+function homeOfOwner(player, livingId) {
+  const space = livingSpaces.find(s => s.id === livingId);
+  if (!space || space.owner !== player.id) {
+    return { refusal: 'Čia ne tavo namai.' };
+  }
+  if (player.map !== livingId) {
+    return { refusal: 'Reikia būti savo namuose.' };
+  }
+  const inside = mapOfPlace(livingId);
+  if (!inside) {
+    return { refusal: 'Šių namų vidaus dar nėra.' };
+  }
+  return { space, inside, entry: livingEntryOf(livingId), items: itemsOfLiving(livingId) };
+}
+
 function broadcastToAll(message) {
     for (const player of players.values()) {
         if (player.status === 'active' && player.ws && player.ws.readyState === WebSocket.OPEN) {
@@ -436,21 +532,27 @@ function removePlayersTreasureMaps(adventureIds) {
 // Is this place on this map a tile of one of the given kinds? A place outside
 // the map, or on a map which is not there any more, is not.
 function placeIsOneOf(mapName, x, y, allowed) {
-  const tile = tileAt(maps[mapName], x, y);
+  const tile = tileAt(mapOfPlace(mapName), x, y);
   return tile !== undefined && allowed.includes(tile);
 }
 
 // The browser forbids walking onto the very same tiles in
 // endsUpInValidPosition, both of them ask shared/tiles.js.
 function placeIsWalkable(mapName, x, y) {
-  return tileIsWalkable(tileAt(maps[mapName], x, y));
+  if (!tileIsWalkable(tileAt(mapOfPlace(mapName), x, y))) {
+    return false;
+  }
+  // A home also has furniture standing in it, and furniture is not walked
+  // through either.
+  const space = livingSpaceOfPlace(mapName);
+  return !space || !itemAt(itemsOfLiving(space.id), x, y);
 }
 
 // The closest place to the given one a player can stand on - the place itself
 // when it is free. Used to get a player out of a wall he never walked into and
 // to find a corner for a player who has just joined the game.
 function nearestWalkablePlace(mapName, x, y) {
-  const map = maps[mapName];
+  const map = mapOfPlace(mapName);
   if (!map || !map.tiles.length) {
     return null;
   }
@@ -548,8 +650,18 @@ async function validateStoredPlaces() {
     if (placeIsWalkable(player.map, player.x, player.y)) {
       continue;
     }
-    const mapName = maps[player.map] ? player.map : 'base';
-    const place = nearestWalkablePlace(mapName, player.x, player.y);
+    let mapName = mapOfPlace(player.map) ? player.map : 'base';
+    let place = nearestWalkablePlace(mapName, player.x, player.y);
+    if (!place) {
+      // Inside a home a player can be standing nowhere near its rooms at all,
+      // for example when the home was drawn somewhere else altogether. Then
+      // the door of that home is where he belongs.
+      place = livingEntryOf(mapName);
+    }
+    if (!place) {
+      mapName = 'base';
+      place = nearestWalkablePlace(mapName, 3, 3);
+    }
     if (!place) {
       logWithTimestamp(`Player ${player.id} is standing at ${player.map} (${player.x}, ${player.y}), where nobody can stand, and no free place was found`);
       continue;
@@ -566,9 +678,19 @@ async function validateStoredPlaces() {
   // used to be - but it is a map file waiting to lose somebody's home, so it
   // is said out loud once.
   for (const [mapName, map] of Object.entries(maps)) {
-    const nameless = (map.points || []).filter(point => point.type === 'living' && !point.id);
+    const living = (map.points || []).filter(point => point.type === 'living');
+    const nameless = living.filter(point => !point.id);
     if (nameless.length > 0) {
       logWithTimestamp(`WARNING: map '${mapName}' has ${nameless.length} living point(s) without an id, they are remembered by their place only`);
+    }
+    // The inside of a home is the map named after its kind, unless the point
+    // names another one. A kind nobody has drawn an inside for can be bought,
+    // but its owner can not walk in, so it is said out loud once.
+    const homeless = new Set(living
+      .filter(point => !maps[livingInsideMap(point)])
+      .map(point => livingInsideMap(point)));
+    if (homeless.size > 0) {
+      logWithTimestamp(`WARNING: map '${mapName}' has living points whose inside is not drawn anywhere: ${[...homeless].join(', ')}`);
     }
   }
 
@@ -604,6 +726,25 @@ async function validateStoredPlaces() {
     }
   });
 
+  // The homes are drawn by hand as well, so a bed which stood in a bedroom
+  // yesterday can be standing in a wall today. Such a piece of furniture is
+  // taken away, and so is the furniture of a home which is not in the map file
+  // any more.
+  const lostItems = livingItems.filter(item => {
+    const inside = mapOfPlace(item.living);
+    if (!inside) {
+      return true;
+    }
+    return itemTiles(item).some(tile => !tileIsWalkable(tileAt(inside, tile.x, tile.y)));
+  });
+  if (lostItems.length > 0) {
+    livingItems = livingItems.filter(item => !lostItems.includes(item));
+    lostItems.forEach(item => {
+      logWithTimestamp(`Removing a ${livingItemName(item.type)} from the home ${item.living} at (${item.x}, ${item.y}), it can not stand there any more`);
+    });
+    await saveLivingItems();
+  }
+
   if (lostAdventures.length > 0 || piecesMoved > 0) {
     // Lets the players forget the maps of the adventures which are gone, and
     // draws the places where the pieces lay now.
@@ -623,7 +764,7 @@ async function validateStoredPlaces() {
 
 // Load initial data
 (async () => {
-    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints(), loadAdventures(), loadLivingSpaces()]);
+    await Promise.all([loadPlayers(), loadMapData(), loadGamePoints(), loadAdventures(), loadLivingSpaces(), loadLivingItems()]);
     await validateStoredPlaces();
 })();
 
@@ -709,6 +850,7 @@ wss.on('connection', async ws => {
         players: allPlayers,
         gamePoints: serverGamePoints,
         livingSpaces: livingSpacesForPlayers(),
+        livingItems: livingItemsOfPlayer(id),
         lastAction: dateNow()
       }));
 
@@ -748,7 +890,8 @@ wss.on('connection', async ws => {
         colour: playerState.colour,
         players: allPlayers,
         gamePoints: serverGamePoints,
-        livingSpaces: livingSpacesForPlayers()
+        livingSpaces: livingSpacesForPlayers(),
+        livingItems: livingItemsOfPlayer(id)
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
@@ -756,7 +899,10 @@ wss.on('connection', async ws => {
 
     } else if (message.type === 'move') {
       const player = players.get(id);
-      if (player) {
+      const movedInto = livingSpaceOfPlace(message.map);
+      if (player && movedInto && movedInto.owner !== id) {
+        logWithTimestamp(`Player ${id} tried to walk inside the home ${movedInto.id} of somebody else`);
+      } else if (player) {
         player.x = message.x;
         player.y = message.y;
         player.map = message.map;
@@ -827,8 +973,15 @@ wss.on('connection', async ws => {
       // TODO: Thiw should not be required, as map is sent in 'move' message
       const player = players.get(id);
       if (player) {
-        player.map = message.map;
-        debouncedSave();
+        // The inside of a home is named by the id of the living space, and
+        // nobody but its owner is let in.
+        const space = livingSpaceOfPlace(message.map);
+        if (space && space.owner !== id) {
+          logWithTimestamp(`Player ${id} tried to walk into the home ${space.id} of somebody else`);
+        } else {
+          player.map = message.map;
+          debouncedSave();
+        }
       }
     } else if (message.type === 'coinCollected') {
       const player = players.get(id);
@@ -926,6 +1079,83 @@ wss.on('connection', async ws => {
           }));
           // Everybody has to see the lightbulb of that house turn blue.
           sendLivingSpaces();
+        }
+      }
+    } else if (message.type === 'addLivingItem') {
+      const player = players.get(id);
+      if (player) {
+        const home = homeOfOwner(player, message.living);
+        // The kind of furniture comes under a name of its own, because the
+        // type of the message itself is already taken.
+        const price = livingItemPrice(message.itemType);
+        const item = {
+          type: message.itemType,
+          x: Number(message.x),
+          y: Number(message.y),
+          turned: Boolean(message.turned)
+        };
+
+        let refusal = home.refusal;
+        if (!refusal && price === null) {
+          refusal = 'Tokio daikto nėra.';
+        } else if (!refusal && player.money < price) {
+          refusal = `Trūksta pinigų, reikia €${price}.`;
+        }
+        if (!refusal) {
+          refusal = itemPlacementRefusal(home.inside, home.items, item,
+            { x: player.x, y: player.y }, home.entry);
+        }
+
+        if (refusal) {
+          ws.send(JSON.stringify({ type: 'livingItemFailed', reason: refusal }));
+          ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          sendLivingItems(ws, id);
+        } else {
+          player.money -= price;
+          player.lastAction = dateNow();
+          livingItems.push({ id: randomUUID(), living: message.living, ...item });
+          debouncedLivingItemsSave();
+          debouncedSave();
+          logWithTimestamp(`Player ${id} bought a ${livingItemName(item.type)} for his home ${message.living} at (${item.x}, ${item.y}) for €${price}`);
+          ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          sendLivingItems(ws, id);
+        }
+      }
+    } else if (message.type === 'moveLivingItem') {
+      const player = players.get(id);
+      if (player) {
+        const home = homeOfOwner(player, message.living);
+        const moved = livingItems.find(i => i.id === message.id && i.living === message.living);
+        const item = moved && {
+          ...moved,
+          x: Number(message.x),
+          y: Number(message.y),
+          turned: Boolean(message.turned)
+        };
+
+        let refusal = home.refusal;
+        if (!refusal && !moved) {
+          refusal = 'Tokio daikto čia nėra.';
+        }
+        if (!refusal) {
+          // The thing being moved must not stand in its own way, so it is left
+          // out of the furniture the new place is looked at against.
+          refusal = itemPlacementRefusal(home.inside, home.items.filter(i => i !== moved), item,
+            { x: player.x, y: player.y }, home.entry);
+        }
+
+        if (refusal) {
+          ws.send(JSON.stringify({ type: 'livingItemFailed', reason: refusal }));
+          sendLivingItems(ws, id);
+        } else {
+          moved.x = item.x;
+          moved.y = item.y;
+          moved.turned = item.turned;
+          player.lastAction = dateNow();
+          debouncedLivingItemsSave();
+          debouncedSave();
+          logWithTimestamp(`Player ${id} moved a ${livingItemName(moved.type)} in his home ${message.living} to (${moved.x}, ${moved.y})`);
+          sendLivingItems(ws, id);
         }
       }
     } else if (message.type === 'digging') {

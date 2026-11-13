@@ -6,6 +6,7 @@ import { findPath, initializePathfinding } from "./utilies/findPath";
 import { sendMessage } from "./websocket";
 import { playerData, updatePlayerMoney } from "./components/Player";
 import { showLivingDialog } from "./livingDialog";
+import { tapInLiving } from "./livingItemsUi";
 
 export function collectUserInput(camera, handleZoom) {
     const digButton = document.getElementById('dig-button');
@@ -198,6 +199,12 @@ export function collectUserInput(camera, handleZoom) {
         const to = {
             x: Math.round(intersect.x / tileSize),
             y: Math.round(intersect.y / tileSize),
+        }
+        // At home a tap can be about the furniture: putting a thing down, or
+        // picking up one which is already standing there. Such a tap is not
+        // asking the player to walk anywhere.
+        if (tapInLiving(to.x, to.y)) {
+            return;
         }
         if (Math.abs(position.x - to.x) <= 1 && Math.abs(position.y - to.y) <= 1) {
             const clickedPoint = currentPoints.find(p => p.x === to.x && p.y === to.y);

@@ -1,9 +1,11 @@
-import { livingPrice, livingTypeName } from '../shared/livingSpace.js';
+import { livingInsideMap, livingPrice, livingTypeName } from '../shared/livingSpace.js';
 import { isMyLivingSpace, livingSpaceOwner } from './livingSpaces.js';
 import { playerData } from './components/Player.js';
-import { currentMapName, maps, switchToMap } from './components/Map.js';
+import { currentMapName, enterLiving, maps } from './components/Map.js';
 import { initializePathfinding } from './utilies/findPath.js';
-import { sendMessage } from './websocket.js';
+import { sendMessage, sendPosition } from './websocket.js';
+import { listenToPresses } from './utilies/listenToPresses.js';
+import { updateLivingToolbar } from './livingItemsUi.js';
 
 // The living point the open dialog is talking about.
 let shownPoint = null;
@@ -35,18 +37,6 @@ function buildDialog() {
   listenToPresses(enterButton, enterShownLivingSpace);
 }
 
-// A computer presses a button with a click, a phone with a touch. The touch is
-// answered and stopped right there, because a touch which is left alone is
-// turned into a click afterwards and the button would be pressed twice.
-function listenToPresses(button, press) {
-  const handlePress = event => {
-    event.preventDefault();
-    press();
-  };
-  button.addEventListener('click', handlePress);
-  button.addEventListener('touchend', handlePress);
-}
-
 function setLines(lines) {
   linesEl.textContent = '';
   lines.forEach(text => {
@@ -74,7 +64,9 @@ export function showLivingDialog(point) {
   const price = livingPrice(point);
   const space = livingSpaceOwner(currentMapName, point);
   const isMine = isMyLivingSpace(currentMapName, point);
-  const canEnter = isMine && Boolean(point.map) && Boolean(maps[point.map]);
+  // Only a home with an id has an inside of its own: the furniture of a home
+  // is remembered by that id.
+  const canEnter = isMine && Boolean(point.id) && Boolean(maps[livingInsideMap(point)]);
 
   titleEl.textContent = livingTypeName(point.livingType);
   enterButton.style.display = canEnter ? 'inline-block' : 'none';
@@ -147,13 +139,21 @@ function buyShownLivingSpace() {
 }
 
 function enterShownLivingSpace() {
-  if (!shownPoint || !shownPoint.map) {
+  if (!shownPoint || !shownPoint.id) {
     return;
   }
   const point = shownPoint;
   closeLivingDialog();
-  switchToMap(point.map, initializePathfinding, point.map_x, point.map_y);
-  sendMessage({ type: 'mapTransfer', map: point.map });
+  // Inside, the place is called by the id of the living space, so that every
+  // child walks in his own home and not in a room shared by everybody who
+  // bought the same kind of flat.
+  if (enterLiving(point.id, initializePathfinding)) {
+    // The place and the tile the player landed on are told in one go: a
+    // player who closes the game right now must not be remembered standing
+    // outside his own home.
+    sendPosition(playerData.x, playerData.y);
+  }
+  updateLivingToolbar();
 }
 
 // The player has just bought a home, so let him enjoy it for a moment.

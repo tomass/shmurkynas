@@ -32,6 +32,14 @@ export function parseMapData(text) {
     // Note: reversing the rows to match coordinate system - y=0 at bottom
     const tileArray = tilesData.split('\n').map(line => line.split('')).reverse();
 
+    // Where a player walks in through the door of this map. Many homes are
+    // seen from the inside as one and the same map, so the door is said once
+    // here and not by every living point leading in. It is written the way
+    // this map is drawn - counted from its left and from its top - and this is
+    // the only place which knows that map, so it is turned into a place in the
+    // world right here.
+    const entry = readEntry(header, tileArray, origin);
+
     const points = [];
     if (pointsStart !== -1) {
       const pointsData = content.substring(pointsStart + "[points]".length).trim();
@@ -79,6 +87,7 @@ export function parseMapData(text) {
     maps[mapName] = {
       type: mapType,
       origin: origin,
+      entry: entry,
       tiles: tileArray,
       points: points
     };
@@ -87,8 +96,26 @@ export function parseMapData(text) {
   return maps;
 }
 
+// A whole number written in the header of a map, or null when it is not
+// there at all.
+function findNumber(header, name) {
+  const match = header.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+)\\s*$`, 'm'));
+  return match ? Number(match[1]) : null;
+}
+
 // A whole number written in the header of a map, 0 when it is not there.
 function readNumber(header, name) {
-  const match = header.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+)\\s*$`, 'm'));
-  return match ? Number(match[1]) : 0;
+  const found = findNumber(header, name);
+  return found === null ? 0 : found;
+}
+
+// The door of a map, turned from the way the map is drawn into a place in the
+// world. A map nobody walks into has none.
+function readEntry(header, tiles, origin) {
+  const entry_x = findNumber(header, 'entry_x');
+  const entry_y = findNumber(header, 'entry_y');
+  if (entry_x === null || entry_y === null) {
+    return null;
+  }
+  return { x: entry_x + origin.x, y: tiles.length - 1 - entry_y + origin.y };
 }

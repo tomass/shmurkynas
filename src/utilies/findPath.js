@@ -1,11 +1,24 @@
 import easystarjs from "easystarjs";
 import { mapData, currentOrigin } from "../components/Map";
 import { pathableTiles } from "../../shared/tiles.js";
+import { blockedTiles } from "../livingItems.js";
 
 const easystar = new easystarjs.js();
 
 export function initializePathfinding() {
-  easystar.setGrid(mapData);
+  // The furniture of a home is not written in the map file, so the tiles it
+  // takes up are walled off in a copy of the map before the path finder is
+  // given it. Everywhere else there is no furniture and the copy is the map
+  // itself. This has to be done again every time something is moved.
+  const grid = mapData.map(row => [...row]);
+  blockedTiles().forEach(tile => {
+    const x = tile.x - currentOrigin.x;
+    const y = tile.y - currentOrigin.y;
+    if (grid[y] && grid[y][x] !== undefined) {
+      grid[y][x] = 'S';
+    }
+  });
+  easystar.setGrid(grid);
   easystar.setAcceptableTiles(pathableTiles);
 }
 

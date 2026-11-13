@@ -13,6 +13,8 @@
       <div id="playerMoney"></div>
       <div id="playerColour"></div>
       <div id="show-maps-button" style="display: none;">🗺️</div>
+      <div id="add-item-button" style="display: none;">🛋️</div>
+      <div id="leave-living-button" style="display: none;">🚪</div>
       <div id="dig-button">⛏️</div>
       <div id="settings-button">🔧</div>
     </div>
@@ -33,6 +35,36 @@
           <button id="enter-living">Įeiti</button>
           <button id="buy-living">Pirkti</button>
           <button id="close-living">Uždaryti</button>
+        </div>
+      </div>
+    </template>
+    <template id="item-list-template">
+      <div id="item-list-dialog" class="game-dialog" style="display: none;">
+        <h2 id="item-list-title">Ką pridėti?</h2>
+        <div id="item-list-lines"></div>
+        <div id="item-list-choices"></div>
+        <div class="dialog-buttons">
+          <button id="close-item-list">Uždaryti</button>
+        </div>
+      </div>
+    </template>
+    <template id="item-template">
+      <div id="item-dialog" class="game-dialog" style="display: none;">
+        <h2 id="item-title"></h2>
+        <div id="item-lines"></div>
+        <div class="dialog-buttons">
+          <button id="move-item" class="good-button">Perkelti</button>
+          <button id="close-item">Uždaryti</button>
+        </div>
+      </div>
+    </template>
+    <template id="placement-template">
+      <div id="placement-bar" style="display: none;">
+        <div id="placement-hint"></div>
+        <div id="placement-buttons">
+          <button id="place-item" title="Padėti">✅</button>
+          <button id="turn-item" title="Pasukti">🔄</button>
+          <button id="cancel-placement" title="Atšaukti">❌</button>
         </div>
       </div>
     </template>

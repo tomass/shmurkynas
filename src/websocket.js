@@ -1,11 +1,13 @@
 import { removeOtherPlayer, updateOtherPlayer } from './otherPlayers.js';
-import { setGamePoints, currentMapName, map, refreshLivingPoints } from './components/Map.js';
+import { setGamePoints, currentPlace, map, refreshLivingPoints } from './components/Map.js';
 import { updatePlayerMoney, playerData } from './components/Player.js';
 import { TreasureMap } from './components/TreasureMap.js';
 import { startCoinBurst } from './coinBurst.js';
 import { playVictorySound } from './sounds.js';
 import { setLivingSpaces, setMyPlayerId } from './livingSpaces.js';
 import { livingBought, livingSpacesChanged, showLivingMessage } from './livingDialog.js';
+import { setLivingItems } from './livingItems.js';
+import { livingItemsChanged, showLivingItemMessage } from './livingItemsUi.js';
 
 let socket;
 let playerId = null;
@@ -86,6 +88,7 @@ export function connect() {
         // lightbulbs would all start green.
         setMyPlayerId(playerId);
         setLivingSpaces(message.livingSpaces);
+        setLivingItems(message.livingItems);
         const gameInitEvent = new CustomEvent('game-init', { detail: message });
         window.dispatchEvent(gameInitEvent);
         break;
@@ -123,6 +126,13 @@ export function connect() {
       case 'livingBought':
         livingBought(message);
         break;
+      case 'livingItems':
+        setLivingItems(message.items);
+        livingItemsChanged();
+        break;
+      case 'livingItemFailed':
+        showLivingItemMessage(message.reason);
+        break;
       case 'buyLivingFailed':
         showLivingMessage(message.reason);
         break;
@@ -140,7 +150,7 @@ export function connect() {
       case 'treasureDug':
         console.log(`${message.name} found a treasure at ${message.map} (${message.x}, ${message.y})!`);
         // Only worth showing if we are standing on the same map.
-        if (message.map === currentMapName) {
+        if (message.map === currentPlace()) {
           startCoinBurst(message.x, message.y);
         }
         break;
@@ -167,7 +177,7 @@ export function sendPosition(x, y) {
       type: 'move',
       x: x,
       y: y,
-      map: currentMapName
+      map: currentPlace()
     };
     socket.send(JSON.stringify(message));
     localStorage.setItem('lastPosition', JSON.stringify({ x, y }));

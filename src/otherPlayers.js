@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { createPlayerMesh } from "./components/Player.js";
 import { tileSize } from "./constants.js";
-import { currentMapName } from "./components/Map.js";
+import { currentPlace } from "./components/Map.js";
 
 export const otherPlayers = new THREE.Group();
 const otherPlayersMap = new Map(); // Will store { playerInfo: {}, mesh: THREE.Mesh | undefined }
@@ -30,7 +30,7 @@ export function updateOtherPlayer(playerInfo) {
     // Always update player info
     playerRecord.playerInfo = playerInfo;
 
-    const isOnSameMap = (map === currentMapName);
+    const isOnSameMap = (map === currentPlace());
 
     if (isOnSameMap) {
         // Player is on the same map

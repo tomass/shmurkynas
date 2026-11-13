@@ -3,7 +3,7 @@ import { movesQueue, stepCompleted } from "./components/Player";
 import { player, playerData } from "./components/Player";
 import { tileSize } from "./constants";
 import { sendPosition, sendMessage } from "./websocket";
-import { gamePoints, currentMapName } from "./components/Map";
+import { gamePoints, currentPlace } from "./components/Map";
 
 const moveTimer = new THREE.Timer();
 let movedTime = 0; // seconds already spent on the step being animated now
@@ -31,9 +31,9 @@ export function animatePlayer() {
     stepCompleted();
     sendPosition(playerData.x, playerData.y);
 
-    const coin = gamePoints.find(p => p.type === 'coin' && p.x === playerData.x && p.y === playerData.y && p.map === currentMapName);
+    const coin = gamePoints.find(p => p.type === 'coin' && p.x === playerData.x && p.y === playerData.y && p.map === currentPlace());
     if (coin) {
-      sendMessage({ type: 'coinCollected', x: coin.x, y: coin.y, map: currentMapName });
+      sendMessage({ type: 'coinCollected', x: coin.x, y: coin.y, map: currentPlace() });
     }
 
     movedTime = 0;

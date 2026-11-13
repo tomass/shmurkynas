@@ -96,6 +96,8 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
 - point coordinates (x, y of a point and map_x, map_y of a transfer point) are
   written down the way the map is drawn - counted from its left and from its top -
   the game turns them into world coordinates while loading
+- a map which players walk into - the inside of a home - also says where its door
+  is: entry_x and entry_y, counted from its left and from its top
 - [tiles] followed by a character matrix of tile type characters like ŽGMPV.
 - [points] lists points in that map
 - each point starts with a text "transfer:" for transfer points and "living:" for living points
@@ -104,6 +106,25 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   livingSpaces.json, so the owner keeps his home even when the house is drawn
   somewhere else. A living point without an id still works - it is then remembered
   by its place, the way it used to be - but the server warns about it on startup.
+- what the inside of a home looks like is told by its kind: a `type=flat1` living
+  point is seen from the inside as the map called `flat1`, so the point itself
+  says nothing about it. A single point which wants an inside of its own can name
+  one with `map=`, and the server says on startup when a kind has no inside drawn
+  anywhere.
+- the door is named by that inside map, in its own attributes `entry_x`, `entry_y`
+  (see the header of `[map=flat1]`): it is one and the same door for every home
+  seen through that map, so it is written once. A single living point can still
+  land its owner somewhere else with `map_x=`, `map_y=`. All of them are counted
+  the way the inside map is drawn - from its left and from its top.
+- many homes share one such inside - it is only a template - so while a player is
+  in there, the world calls the place by the id of his living space and not by the
+  name of that map; that is what keeps two children out of each other's rooms.
+  Only the owner is let in, see `currentPlace` of src/components/Map.js and
+  `mapOfPlace` of server/server.js.
+- the furniture the owner buys for his home is remembered in livingItems.json by
+  that same id. What kinds of furniture there are, what they cost, how many tiles
+  they take up and where they may stand is written down once, in
+  `shared/livingItems.js`, which the browser and the server both ask.
 - after point type all attributes are listed on a separate line, like.
 - default map file in this format can be found in public/base.map
 

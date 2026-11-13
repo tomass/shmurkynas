@@ -1,6 +1,7 @@
 import { calculateFinalPosition } from "./calculateFinalPosition.js";
 import { mapData, currentOrigin } from "../components/Map.js";
 import { tileIsWalkable } from "../../shared/tiles.js";
+import { placeIsBlockedByItem } from "../livingItems.js";
 
 export function endsUpInValidPosition(currentPosition, moves) {
   const finalPosition = calculateFinalPosition(currentPosition, moves);
@@ -17,6 +18,11 @@ export function endsUpInValidPosition(currentPosition, moves) {
     index.x >= mapData[0].length ||
     index.y >= mapData.length
   ) {
+    return false;
+  }
+
+  // Inside a home the furniture stands in the way as well.
+  if (placeIsBlockedByItem(finalPosition.x, finalPosition.y)) {
     return false;
   }
 
