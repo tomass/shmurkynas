@@ -11,6 +11,7 @@ import { livingEntryTile, livingInsideMap, livingKey, livingPrice, livingTypeNam
 import { itemAt, itemPlacementRefusal, itemTiles, livingItemName, livingItemPrice, livingItemType } from '../shared/livingItems.js';
 import { tileIsWalkable } from '../shared/tiles.js';
 import { initialiseMapData } from '../src/components/Map.js';
+import { answerSitting, dropSitting, startSitting } from './study.js';
 
 const wss = new WebSocketServer({ port: 8088 });
 const PLAYERS_FILE = './players.json';
@@ -1158,6 +1159,28 @@ wss.on('connection', async ws => {
           sendLivingItems(ws, id);
         }
       }
+    } else if (message.type === 'startLesson') {
+      // What a lesson is and how it is played is all in study.js, here the
+      // player is only handed what that has to say.
+      const player = players.get(id);
+      if (player) {
+        const reply = startSitting(player, message.lesson, mapOfPlace(player.map));
+        if (reply.type === 'lessonFailed') {
+          logWithTimestamp(`Player ${id} was not given the lesson ${message.lesson}: ${reply.reason}`);
+        } else {
+          logWithTimestamp(`Player ${id} started the lesson ${message.lesson}`);
+        }
+        ws.send(JSON.stringify(reply));
+      }
+    } else if (message.type === 'answerLesson') {
+      const player = players.get(id);
+      const reply = player ? answerSitting(player, message.round, message.answer) : null;
+      if (reply) {
+        if (reply.result) {
+          logWithTimestamp(`Player ${id} finished a lesson with ${reply.result.rightAnswers} of ${reply.result.rounds} right`);
+        }
+        ws.send(JSON.stringify(reply));
+      }
     } else if (message.type === 'digging') {
       const player = players.get(id);
       if (player && player.money >= 0) { // server should validate money again
@@ -1215,6 +1238,7 @@ wss.on('connection', async ws => {
       player.status = 'inactive';
       player.ws = null; // web socket session is no longer alive
       player.lastAction = dateNow();
+      dropSitting(player);
     }
     debouncedSave();
     const disconnectMessage = JSON.stringify({ type: 'playerDisconnected', id });

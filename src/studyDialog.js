@@ -1,6 +1,6 @@
 import { subjects } from '../shared/subjects.js';
 import { lessonsFor, startingGrade } from '../shared/lessons.js';
-import { playLesson } from './playLesson.js';
+import { playLesson, stopLesson } from './playLesson.js';
 import { listenToPresses } from './utilies/listenToPresses.js';
 
 // What a child sees after tapping a desk at school: the subject of that desk
@@ -37,6 +37,7 @@ function buildDialog() {
 export function closeStudyDialog() {
   if (dialog) {
     dialog.style.display = 'none';
+    stopLesson();
     lessonEl.textContent = '';
   }
 }

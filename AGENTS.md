@@ -88,8 +88,15 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   problems of one sitting - each a `question`, its `answer` and a `solution` to
   show after a wrong answer - and `isRight(problem, given)` checks an answer. It
   is hung on its line of the catalogue as `game:`; a lesson without a game is
-  listed, but can not be studied. `src/playLesson.js` runs a sitting, and what a
-  question is answered with is chosen by its `kind`, each kind being a file in
+  listed, but can not be studied.
+- **A sitting** - one go at a lesson - is run by the server, in `server/study.js`:
+  it makes up the problems, keeps the answers to itself and counts the right
+  ones, and it only lets a child standing next to a desk of that subject sit
+  down. The browser (`src/playLesson.js`) only shows and asks: it sends
+  `startLesson` and gets `lessonQuestion` back, then sends `answerLesson` for
+  every round and gets `lessonChecked` - right or wrong, and with it the next
+  question or the result. `lessonFailed` says why there is no lesson after all.
+  What a question is answered with is chosen by its `kind`, each kind being a file in
   `src/answers/`: `choice` gives the `options` of the question as buttons to pick
   one of, `tiles` gives its `tiles` to put in a row. Children are not asked to
   type an answer in. A question can carry a `hint`, which the child may ask for.

@@ -8,6 +8,7 @@ import { setLivingSpaces, setMyPlayerId } from './livingSpaces.js';
 import { livingBought, livingSpacesChanged, showLivingMessage } from './livingDialog.js';
 import { setLivingItems } from './livingItems.js';
 import { livingItemsChanged, showLivingItemMessage } from './livingItemsUi.js';
+import { lessonChecked, lessonFailed, lessonQuestion } from './playLesson.js';
 
 let socket;
 let playerId = null;
@@ -138,6 +139,17 @@ export function connect() {
         break;
       case 'updateMoney':
         updatePlayerMoney(message.money);
+        break;
+      // What the server has to say about the lesson being studied, see
+      // playLesson.js.
+      case 'lessonQuestion':
+        lessonQuestion(message);
+        break;
+      case 'lessonChecked':
+        lessonChecked(message);
+        break;
+      case 'lessonFailed':
+        lessonFailed(message);
         break;
       case 'treasureFound':
         console.log(`Congratulations! You found a treasure ${message.adventureId} worth ${message.award}!`);
