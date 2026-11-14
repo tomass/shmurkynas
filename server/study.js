@@ -7,7 +7,7 @@
 // written to any file: a sitting cut short by a restart of the server is
 // simply over.
 
-import { lessons, startingGrade } from '../shared/lessons.js';
+import { lessonAward, lessons, startingGrade } from '../shared/lessons.js';
 import { subjectOfDesk } from '../shared/subjects.js';
 import { tileAt } from '../shared/mapCoords.js';
 
@@ -67,9 +67,11 @@ export function startSitting(player, lessonId, map) {
 
 // The player answers the question of a round. Gives back the message to
 // answer him with: whether he was right, and with it either the question of
-// the next round or, after the last one, how the whole sitting went. Gives
-// back nothing at all for an answer to a round which is already over - that
-// is only a button pressed twice.
+// the next round or, after the last one, how the whole sitting went and the
+// money it has earned. The money is only named here, paying it out is left
+// to the server, which keeps the purse of every player. Gives back nothing
+// at all for an answer to a round which is already over - that is only a
+// button pressed twice.
 export function answerSitting(player, round, given) {
   const sitting = player.sitting;
   if (!sitting) {
@@ -90,7 +92,12 @@ export function answerSitting(player, round, given) {
   if (sitting.round < sitting.problems.length) {
     checked.next = questionMessage(sitting);
   } else {
-    checked.result = { rightAnswers: sitting.rightAnswers, rounds: sitting.problems.length };
+    const rounds = sitting.problems.length;
+    checked.result = {
+      rightAnswers: sitting.rightAnswers,
+      rounds,
+      award: lessonAward(lessons[sitting.lesson], sitting.rightAnswers, rounds),
+    };
     player.sitting = null;
   }
   return checked;

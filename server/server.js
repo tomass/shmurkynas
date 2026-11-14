@@ -1176,10 +1176,18 @@ wss.on('connection', async ws => {
       const player = players.get(id);
       const reply = player ? answerSitting(player, message.round, message.answer) : null;
       if (reply) {
-        if (reply.result) {
-          logWithTimestamp(`Player ${id} finished a lesson with ${reply.result.rightAnswers} of ${reply.result.rounds} right`);
-        }
         ws.send(JSON.stringify(reply));
+        // The last answer of a sitting: whatever it has earned is put into
+        // the purse right away, even if the child never looks at the result.
+        if (reply.result) {
+          const award = reply.result.award;
+          logWithTimestamp(`Player ${id} finished a lesson with ${reply.result.rightAnswers} of ${reply.result.rounds} right and earned €${award}`);
+          if (award > 0) {
+            player.money += award;
+            debouncedSave();
+            ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+          }
+        }
       }
     } else if (message.type === 'digging') {
       const player = players.get(id);

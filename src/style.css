@@ -455,3 +455,54 @@ body {
     margin-top: 6px;
   }
 }
+
+/* The money a lesson has earned: it pops up big, and a few coins jump out
+   of it and fade away. */
+.lesson-award {
+  position: relative;
+  font-size: 36px;
+  font-weight: bold;
+  color: #f6d32d;
+  animation: award-pop 0.5s ease-out;
+}
+
+.award-coin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f6d32d;
+  border: 2px solid #c88800;
+  opacity: 0;
+  pointer-events: none;
+  animation: coin-jump 1.1s ease-out forwards;
+}
+
+@keyframes award-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  70% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes coin-jump {
+  0% { transform: translate(-50%, -50%); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% - 64px)); opacity: 0; }
+}
+
+/* A sitting which has not earned anything says what it takes to earn. */
+.lesson-no-award {
+  font-size: 15px;
+  color: #c0bfbc;
+  max-width: 260px;
+  margin: 8px auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-award,
+  .award-coin {
+    animation: none;
+  }
+}

@@ -20,6 +20,20 @@ export const lessons = {
 // The grade every child starts in.
 export const startingGrade = 5;
 
+// How much of a sitting has to be answered right for it to pay at all: three
+// questions out of five.
+export const passingShare = 0.6;
+
+// The money a sitting pays: nothing below the passing share, and above it the
+// reward of the lesson in the share of the questions answered right - three
+// right out of five pays three fifths of it. Whole euros only.
+export function lessonAward(lesson, rightAnswers, rounds) {
+  if (rounds <= 0 || rightAnswers < rounds * passingShare) {
+    return 0;
+  }
+  return Math.round(lesson.reward * rightAnswers / rounds);
+}
+
 // The lessons of one subject for one grade, in the order they are written
 // above. Each of them is given back together with its id - the name it goes
 // by in the list above.

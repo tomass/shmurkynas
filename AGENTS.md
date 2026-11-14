@@ -96,6 +96,10 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   `startLesson` and gets `lessonQuestion` back, then sends `answerLesson` for
   every round and gets `lessonChecked` - right or wrong, and with it the next
   question or the result. `lessonFailed` says why there is no lesson after all.
+  A sitting pays when at least three of its five questions are answered right
+  (`passingShare`), the reward of the lesson in the share of right answers
+  (`lessonAward` in `shared/lessons.js`). The server puts the money into the
+  purse at the last answer and sends `updateMoney`; the browser only celebrates.
   What a question is answered with is chosen by its `kind`, each kind being a file in
   `src/answers/`: `choice` gives the `options` of the question as buttons to pick
   one of, `tiles` gives its `tiles` to put in a row. Children are not asked to

@@ -1,5 +1,7 @@
 import { ChoiceAnswer } from './answers/choice.js';
 import { TilesAnswer } from './answers/tiles.js';
+import { passingShare } from '../shared/lessons.js';
+import { playVictorySound } from './sounds.js';
 import { listenToPresses } from './utilies/listenToPresses.js';
 import { sendMessage } from './websocket.js';
 
@@ -180,14 +182,39 @@ function showVerdict(message) {
   });
 }
 
-// A star for every right answer, an empty one for every wrong one.
+// A star for every right answer, an empty one for every wrong one, and the
+// money the sitting has earned. The server has put that money into the purse
+// already, here it is only celebrated.
 function showResult(result) {
   sitting.container.textContent = '';
   const resultPart = part('lesson-result');
   line(resultPart, 'lesson-text', 'Pamoka baigta!');
   line(resultPart, 'lesson-stars', '⭐'.repeat(result.rightAnswers) + '☆'.repeat(result.rounds - result.rightAnswers));
   line(resultPart, 'lesson-text', `Teisingai: ${result.rightAnswers} iš ${result.rounds}`);
+  if (result.award > 0) {
+    showAward(resultPart, result.award);
+    playVictorySound();
+  } else {
+    const needed = Math.ceil(result.rounds * passingShare);
+    line(resultPart, 'lesson-no-award', `Kad gautum pinigų, reikia bent ${needed} teisingų atsakymų.`);
+  }
   onwardButton(resultPart, 'Gerai', finish);
+}
+
+// The money earned, written big, with a few coins jumping out of it.
+const flyingCoins = 6;
+
+function showAward(parent, award) {
+  const awardLine = line(parent, 'lesson-award', `+€${award}`);
+  for (let i = 0; i < flyingCoins; i++) {
+    const coin = document.createElement('span');
+    coin.className = 'award-coin';
+    // Each coin flies off a little to the side of its own, and a little
+    // later than the one before it.
+    coin.style.setProperty('--dx', `${(i - (flyingCoins - 1) / 2) * 18}px`);
+    coin.style.animationDelay = `${i * 0.06}s`;
+    awardLine.appendChild(coin);
+  }
 }
 
 // A few words in the place of the lesson, while there is nothing else to show.
