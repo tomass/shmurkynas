@@ -11,7 +11,7 @@ import { livingEntryTile, livingInsideMap, livingKey, livingPrice, livingTypeNam
 import { itemAt, itemPlacementRefusal, itemTiles, livingItemName, livingItemPrice, livingItemType } from '../shared/livingItems.js';
 import { tileIsWalkable } from '../shared/tiles.js';
 import { initialiseMapData } from '../src/components/Map.js';
-import { answerSitting, dropSitting, startSitting } from './study.js';
+import { answerSitting, dropSitting, educationOf, isValidEducation, startSitting } from './study.js';
 
 const wss = new WebSocketServer({ port: 8088 });
 const PLAYERS_FILE = './players.json';
@@ -248,6 +248,13 @@ async function loadPlayers() {
       if (typeof player.money !== 'number' || isNaN(player.money)) {
         logWithTimestamp(`Warning: Invalid or missing 'money' for player ${player.id}. Resetting to 0.`);
         player.money = 0;
+      }
+      // What a child has learned is only looked after by study.js, which
+      // gives a fresh one to whoever has none. One which is broken is told
+      // about and dropped here, so that nobody wonders where it went.
+      if (player.education !== undefined && !isValidEducation(player.education)) {
+        logWithTimestamp(`Warning: Invalid 'education' for player ${player.id}, starting it over: ${JSON.stringify(player.education)}`);
+        delete player.education;
       }
 
       players.set(player.id, {
@@ -852,6 +859,7 @@ wss.on('connection', async ws => {
         gamePoints: serverGamePoints,
         livingSpaces: livingSpacesForPlayers(),
         livingItems: livingItemsOfPlayer(id),
+        education: educationOf(playerState),
         lastAction: dateNow()
       }));
 
@@ -892,7 +900,8 @@ wss.on('connection', async ws => {
         players: allPlayers,
         gamePoints: serverGamePoints,
         livingSpaces: livingSpacesForPlayers(),
-        livingItems: livingItemsOfPlayer(id)
+        livingItems: livingItemsOfPlayer(id),
+        education: educationOf(playerState)
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
@@ -1182,10 +1191,13 @@ wss.on('connection', async ws => {
         if (reply.result) {
           const award = reply.result.award;
           logWithTimestamp(`Player ${id} finished a lesson with ${reply.result.rightAnswers} of ${reply.result.rounds} right and earned €${award}`);
+          // A sitting which pays is also remembered as passed, see study.js,
+          // so the browser is told what the child has learned by now.
           if (award > 0) {
             player.money += award;
             debouncedSave();
             ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
+            ws.send(JSON.stringify({ type: 'education', education: educationOf(player) }));
           }
         }
       }

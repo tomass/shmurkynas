@@ -100,6 +100,13 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   (`passingShare`), the reward of the lesson in the share of right answers
   (`lessonAward` in `shared/lessons.js`). The server puts the money into the
   purse at the last answer and sends `updateMoney`; the browser only celebrates.
+- **What a child has learned** is kept on the player as `education` and saved in
+  players.json: the `grade` he is in (5 for everybody so far) and, for every lesson
+  he has passed, how many times (`passed`) and when it last paid (`lastPaid`). It
+  is looked after by `educationOf` in `server/study.js`, sent to the browser with
+  `init` and again as `education` after every sitting which pays, and shown by the
+  lesson list (`src/education.js`). It is remembered by the lesson's id, so a
+  lesson id in `shared/lessons.js` is never renamed or reused.
   What a question is answered with is chosen by its `kind`, each kind being a file in
   `src/answers/`: `choice` gives the `options` of the question as buttons to pick
   one of, `tiles` gives its `tiles` to put in a row. Children are not asked to

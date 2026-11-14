@@ -5,11 +5,53 @@
 //
 // The sitting is kept on the player for as long as it lasts. It is not
 // written to any file: a sitting cut short by a restart of the server is
-// simply over.
+// simply over. What is written down is what the child has learned, see
+// educationOf below.
 
 import { lessonAward, lessons, startingGrade } from '../shared/lessons.js';
 import { subjectOfDesk } from '../shared/subjects.js';
 import { tileAt } from '../shared/mapCoords.js';
+
+// What the server remembers about the learning of a player. It is kept on
+// the player as `education` and is written to players.json together with
+// the rest of him:
+//
+//   grade     the grade the child is in, whose lessons he is given
+//   lessons   for every lesson he has passed, by the id the lesson has in
+//             shared/lessons.js:
+//               passed     how many of its sittings have paid
+//               lastPaid   when the last of them did, as an ISO date
+//
+// A lesson is remembered by its id, so an id in the catalogue must never be
+// renamed or given to another lesson: the children would lose, or be given,
+// what they have done.
+
+// Is this something education can be made of? A player saved by an older
+// server has nothing of the kind, and a broken file must not break the game.
+export function isValidEducation(education) {
+  return Boolean(education) && typeof education === 'object'
+    && Number.isInteger(education.grade)
+    && Boolean(education.lessons) && typeof education.lessons === 'object'
+    && !Array.isArray(education.lessons);
+}
+
+// The education of a player. One who has none yet is given the one every
+// child starts with.
+export function educationOf(player) {
+  if (!isValidEducation(player.education)) {
+    player.education = { grade: startingGrade, lessons: {} };
+  }
+  return player.education;
+}
+
+// A sitting of this lesson has paid: one more time passed, and now is the
+// last time it paid.
+function rememberPassed(player, lessonId) {
+  const done = educationOf(player).lessons;
+  const before = Object.hasOwn(done, lessonId) ? done[lessonId] : null;
+  const passed = before && Number.isInteger(before.passed) ? before.passed : 0;
+  done[lessonId] = { passed: passed + 1, lastPaid: new Date().toISOString() };
+}
 
 // Is the player standing next to a desk this subject is studied at? This is
 // the very same "next to" the browser uses before it shows the lessons of a
@@ -49,8 +91,7 @@ export function startSitting(player, lessonId, map) {
   if (!lesson || !lesson.game) {
     return failure('Tokios pamokos dar nėra.');
   }
-  // Nobody has been moved up a grade yet, so everybody is in the first one.
-  if (lesson.grade !== startingGrade) {
+  if (lesson.grade !== educationOf(player).grade) {
     return failure('Ši pamoka ne tavo klasei.');
   }
   if (!isAtDesk(player, map, lesson.subject)) {
@@ -69,7 +110,8 @@ export function startSitting(player, lessonId, map) {
 // answer him with: whether he was right, and with it either the question of
 // the next round or, after the last one, how the whole sitting went and the
 // money it has earned. The money is only named here, paying it out is left
-// to the server, which keeps the purse of every player. Gives back nothing
+// to the server, which keeps the purse of every player; a sitting which pays
+// is remembered in the education of the player right here. Gives back nothing
 // at all for an answer to a round which is already over - that is only a
 // button pressed twice.
 export function answerSitting(player, round, given) {
@@ -93,11 +135,11 @@ export function answerSitting(player, round, given) {
     checked.next = questionMessage(sitting);
   } else {
     const rounds = sitting.problems.length;
-    checked.result = {
-      rightAnswers: sitting.rightAnswers,
-      rounds,
-      award: lessonAward(lessons[sitting.lesson], sitting.rightAnswers, rounds),
-    };
+    const award = lessonAward(lessons[sitting.lesson], sitting.rightAnswers, rounds);
+    checked.result = { rightAnswers: sitting.rightAnswers, rounds, award };
+    if (award > 0) {
+      rememberPassed(player, sitting.lesson);
+    }
     player.sitting = null;
   }
   return checked;

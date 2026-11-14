@@ -9,6 +9,7 @@ import { livingBought, livingSpacesChanged, showLivingMessage } from './livingDi
 import { setLivingItems } from './livingItems.js';
 import { livingItemsChanged, showLivingItemMessage } from './livingItemsUi.js';
 import { lessonChecked, lessonFailed, lessonQuestion } from './playLesson.js';
+import { setEducation } from './education.js';
 
 let socket;
 let playerId = null;
@@ -90,6 +91,7 @@ export function connect() {
         setMyPlayerId(playerId);
         setLivingSpaces(message.livingSpaces);
         setLivingItems(message.livingItems);
+        setEducation(message.education);
         const gameInitEvent = new CustomEvent('game-init', { detail: message });
         window.dispatchEvent(gameInitEvent);
         break;
@@ -150,6 +152,9 @@ export function connect() {
         break;
       case 'lessonFailed':
         lessonFailed(message);
+        break;
+      case 'education':
+        setEducation(message.education);
         break;
       case 'treasureFound':
         console.log(`Congratulations! You found a treasure ${message.adventureId} worth ${message.award}!`);

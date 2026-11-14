@@ -1,5 +1,6 @@
 import { subjects } from '../shared/subjects.js';
-import { lessonsFor, startingGrade } from '../shared/lessons.js';
+import { lessonsFor } from '../shared/lessons.js';
+import { myGrade, timesPassed } from './education.js';
 import { playLesson, stopLesson } from './playLesson.js';
 import { listenToPresses } from './utilies/listenToPresses.js';
 
@@ -61,9 +62,7 @@ function showLessonList() {
   lessonEl.textContent = '';
   lessonEl.style.display = 'none';
   lessonsEl.style.display = '';
-  // Nobody has been moved up a grade yet, so every child is in the one all
-  // of them start in.
-  listLessons(lessonsFor(shownSubject, startingGrade));
+  listLessons(lessonsFor(shownSubject, myGrade()));
 }
 
 function startLesson(lesson) {
@@ -74,11 +73,17 @@ function startLesson(lesson) {
   playLesson(lessonEl, lesson, showLessonList);
 }
 
-// Every lesson gets a button of its own, with what it pays written on it.
+// The grade the child is in, and under it every lesson of that grade gets a
+// button of its own: its name, a tick with the number of times it has been
+// passed already, and what it pays.
 function listLessons(lessons) {
   lessonsEl.textContent = '';
+  const grade = document.createElement('div');
+  grade.className = 'study-grade';
+  grade.textContent = `${myGrade()} klasė`;
+  lessonsEl.appendChild(grade);
   if (lessons.length === 0) {
-    lessonsEl.textContent = 'Pamokų čia dar nėra.';
+    lessonsEl.appendChild(document.createTextNode('Pamokų čia dar nėra.'));
     return;
   }
   lessons.forEach(lesson => {
@@ -86,6 +91,13 @@ function listLessons(lessons) {
     const name = document.createElement('span');
     const reward = document.createElement('span');
     name.textContent = lesson.name;
+    const passed = timesPassed(lesson.id);
+    if (passed > 0) {
+      const done = document.createElement('span');
+      done.className = 'lesson-done';
+      done.textContent = `✔ ${passed}`;
+      name.appendChild(done);
+    }
     reward.textContent = `€${lesson.reward}`;
     button.appendChild(name);
     button.appendChild(reward);

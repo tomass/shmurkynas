@@ -506,3 +506,17 @@ body {
     animation: none;
   }
 }
+
+/* Above the lessons of a desk: the grade the child is in. Next to the name
+   of a lesson: how many times it has been passed already. */
+.study-grade {
+  font-size: 15px;
+  color: #c0bfbc;
+  margin: 0 0 2px !important;
+}
+
+.lesson-done {
+  margin-left: 8px;
+  font-size: 15px;
+  color: #d4f7c4;
+}
