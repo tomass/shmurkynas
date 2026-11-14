@@ -8,7 +8,7 @@
 // simply over. What is written down is what the child has learned, see
 // educationOf below.
 
-import { lessonAward, lessons, startingGrade } from '../shared/lessons.js';
+import { freshness, lessonAward, lessons, startingGrade } from '../shared/lessons.js';
 import { subjectOfDesk } from '../shared/subjects.js';
 import { tileAt } from '../shared/mapCoords.js';
 
@@ -44,13 +44,21 @@ export function educationOf(player) {
   return player.education;
 }
 
-// A sitting of this lesson has paid: one more time passed, and now is the
+// When a sitting of this lesson last paid, as an ISO date; null when none
+// ever has.
+function lastPaidOf(player, lessonId) {
+  const done = educationOf(player).lessons;
+  const before = Object.hasOwn(done, lessonId) ? done[lessonId] : null;
+  return before && typeof before.lastPaid === 'string' ? before.lastPaid : null;
+}
+
+// A sitting of this lesson has paid: one more time passed, and `now` is the
 // last time it paid.
-function rememberPassed(player, lessonId) {
+function rememberPassed(player, lessonId, now) {
   const done = educationOf(player).lessons;
   const before = Object.hasOwn(done, lessonId) ? done[lessonId] : null;
   const passed = before && Number.isInteger(before.passed) ? before.passed : 0;
-  done[lessonId] = { passed: passed + 1, lastPaid: new Date().toISOString() };
+  done[lessonId] = { passed: passed + 1, lastPaid: new Date(now).toISOString() };
 }
 
 // Is the player standing next to a desk this subject is studied at? This is
@@ -134,11 +142,23 @@ export function answerSitting(player, round, given) {
   if (sitting.round < sitting.problems.length) {
     checked.next = questionMessage(sitting);
   } else {
+    // What the sitting pays depends on how long the lesson has rested, so
+    // that is looked at before this sitting is written down as its last pay.
+    // The browser is told along with the money how rested the lesson was, so
+    // that it can say why the money is more or less than the time before.
     const rounds = sitting.problems.length;
-    const award = lessonAward(lessons[sitting.lesson], sitting.rightAnswers, rounds);
-    checked.result = { rightAnswers: sitting.rightAnswers, rounds, award };
+    const now = Date.now();
+    const lastPaid = lastPaidOf(player, sitting.lesson);
+    const award = lessonAward(lessons[sitting.lesson], sitting.rightAnswers, rounds, lastPaid, now);
+    checked.result = {
+      rightAnswers: sitting.rightAnswers,
+      rounds,
+      award,
+      firstTime: lastPaid === null,
+      freshness: freshness(lastPaid, now),
+    };
     if (award > 0) {
-      rememberPassed(player, sitting.lesson);
+      rememberPassed(player, sitting.lesson, now);
     }
     player.sitting = null;
   }

@@ -91,7 +91,7 @@ export function connect() {
         setMyPlayerId(playerId);
         setLivingSpaces(message.livingSpaces);
         setLivingItems(message.livingItems);
-        setEducation(message.education);
+        setEducation(message.education, message.serverTime);
         const gameInitEvent = new CustomEvent('game-init', { detail: message });
         window.dispatchEvent(gameInitEvent);
         break;
@@ -154,7 +154,7 @@ export function connect() {
         lessonFailed(message);
         break;
       case 'education':
-        setEducation(message.education);
+        setEducation(message.education, message.serverTime);
         break;
       case 'treasureFound':
         console.log(`Congratulations! You found a treasure ${message.adventureId} worth ${message.award}!`);

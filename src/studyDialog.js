@@ -1,6 +1,6 @@
 import { subjects } from '../shared/subjects.js';
-import { lessonsFor } from '../shared/lessons.js';
-import { myGrade, timesPassed } from './education.js';
+import { lessonPayNow, lessonsFor } from '../shared/lessons.js';
+import { lastPaidOf, myGrade, serverNow, timesPassed } from './education.js';
 import { playLesson, stopLesson } from './playLesson.js';
 import { listenToPresses } from './utilies/listenToPresses.js';
 
@@ -75,7 +75,9 @@ function startLesson(lesson) {
 
 // The grade the child is in, and under it every lesson of that grade gets a
 // button of its own: its name, a tick with the number of times it has been
-// passed already, and what it pays.
+// passed already, and what it pays right now with every answer right. A
+// lesson which has rested long enough to pay more than its usual reward has
+// its price shown in gold, so that it stands out among the others.
 function listLessons(lessons) {
   lessonsEl.textContent = '';
   const grade = document.createElement('div');
@@ -98,7 +100,11 @@ function listLessons(lessons) {
       done.textContent = `✔ ${passed}`;
       name.appendChild(done);
     }
-    reward.textContent = `€${lesson.reward}`;
+    const pay = lessonPayNow(lesson, lastPaidOf(lesson.id), serverNow());
+    reward.textContent = `€${pay}`;
+    if (pay > lesson.reward) {
+      reward.className = 'pay-ripe';
+    }
     button.appendChild(name);
     button.appendChild(reward);
     // A lesson which has no game yet is listed, but can not be pressed.

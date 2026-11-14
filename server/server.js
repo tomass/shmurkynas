@@ -860,6 +860,9 @@ wss.on('connection', async ws => {
         livingSpaces: livingSpacesForPlayers(),
         livingItems: livingItemsOfPlayer(id),
         education: educationOf(playerState),
+        // What a lesson pays depends on the time, and the clock of the
+        // server is the one which counts, see src/education.js.
+        serverTime: Date.now(),
         lastAction: dateNow()
       }));
 
@@ -901,7 +904,8 @@ wss.on('connection', async ws => {
         gamePoints: serverGamePoints,
         livingSpaces: livingSpacesForPlayers(),
         livingItems: livingItemsOfPlayer(id),
-        education: educationOf(playerState)
+        education: educationOf(playerState),
+        serverTime: Date.now()
       }));
       debouncedSave();
       logWithTimestamp(`New player ${id} connected at (${x}, ${y})`);
@@ -1197,7 +1201,7 @@ wss.on('connection', async ws => {
             player.money += award;
             debouncedSave();
             ws.send(JSON.stringify({ type: 'updateMoney', money: player.money }));
-            ws.send(JSON.stringify({ type: 'education', education: educationOf(player) }));
+            ws.send(JSON.stringify({ type: 'education', education: educationOf(player), serverTime: Date.now() }));
           }
         }
       }

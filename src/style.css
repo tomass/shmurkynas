@@ -457,8 +457,11 @@ body {
 }
 
 /* The money a lesson has earned: it pops up big, and a few coins jump out
-   of it and fade away. */
+   of it and fade away. It is only as wide as its text: a whole line of the
+   dialog growing as it pops would stick out of the dialog for a moment and
+   bring up a scroll bar. */
 .lesson-award {
+  display: inline-block;
   position: relative;
   font-size: 36px;
   font-weight: bold;
@@ -492,8 +495,10 @@ body {
   100% { transform: translate(calc(-50% + var(--dx)), calc(-50% - 64px)); opacity: 0; }
 }
 
-/* A sitting which has not earned anything says what it takes to earn. */
-.lesson-no-award {
+/* A sitting which has not earned anything says what it takes to earn, and
+   one which has says why it earned more or less than usual. */
+.lesson-no-award,
+.lesson-why {
   font-size: 15px;
   color: #c0bfbc;
   max-width: 260px;
@@ -519,4 +524,19 @@ body {
   margin-left: 8px;
   font-size: 15px;
   color: #d4f7c4;
+}
+
+/* The price of a lesson which has rested long enough to pay more than its
+   usual reward: gold, so that it stands out. */
+#study-lessons button .pay-ripe {
+  padding: 0 8px;
+  border-radius: 10px;
+  background: #f6d32d;
+  color: #3d3846;
+  font-weight: bold;
+}
+
+#study-lessons button:disabled .pay-ripe {
+  background: #77767b;
+  color: #c0bfbc;
 }

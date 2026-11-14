@@ -97,9 +97,15 @@ Kids aged 6–12 (simple controls, bright visuals, collaborative tasks).
   every round and gets `lessonChecked` - right or wrong, and with it the next
   question or the result. `lessonFailed` says why there is no lesson after all.
   A sitting pays when at least three of its five questions are answered right
-  (`passingShare`), the reward of the lesson in the share of right answers
-  (`lessonAward` in `shared/lessons.js`). The server puts the money into the
-  purse at the last answer and sends `updateMoney`; the browser only celebrates.
+  (`passingShare`): the reward of the lesson, times its freshness, in the share
+  of right answers, and never less than `minimumAward` (2 euros) - see
+  `lessonAward` in `shared/lessons.js`. Freshness is how long the lesson has
+  rested since it last paid (`freshnessCurve`): a fifth of the reward right
+  after, the whole reward a day later, three times it after a week, and three
+  times it for a lesson never passed. The server puts the money into the purse
+  at the last answer and sends `updateMoney`; the browser only celebrates. The
+  lesson list shows what each lesson pays right now, by the server's clock
+  (`serverTime` is sent with `init` and `education`).
 - **What a child has learned** is kept on the player as `education` and saved in
   players.json: the `grade` he is in (5 for everybody so far) and, for every lesson
   he has passed, how many times (`passed`) and when it last paid (`lastPaid`). It

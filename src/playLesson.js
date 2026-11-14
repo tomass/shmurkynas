@@ -194,11 +194,31 @@ function showResult(result) {
   if (result.award > 0) {
     showAward(resultPart, result.award);
     playVictorySound();
+    const why = whyThisMuch(result);
+    if (why) {
+      line(resultPart, 'lesson-why', why);
+    }
   } else {
     const needed = Math.ceil(result.rounds * passingShare);
     line(resultPart, 'lesson-no-award', `Kad gautum pinigų, reikia bent ${needed} teisingų atsakymų.`);
   }
   onwardButton(resultPart, 'Gerai', finish);
+}
+
+// A lesson pays more the longer it has rested, see freshness in
+// shared/lessons.js. Without a word about it a child would only wonder why
+// the very same lesson paid fifteen euros yesterday and two today.
+function whyThisMuch(result) {
+  if (result.firstTime) {
+    return '🎁 Pirmą kartą atlikta pamoka moka daugiausia!';
+  }
+  if (result.freshness > 1) {
+    return '🎁 Ilgai nedaryta pamoka moka daugiau!';
+  }
+  if (result.freshness < 1) {
+    return 'Neseniai daryta pamoka moka mažiau – po dienos ji vėl mokės daugiau.';
+  }
+  return null;
 }
 
 // The money earned, written big, with a few coins jumping out of it.
